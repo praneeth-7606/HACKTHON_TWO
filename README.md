@@ -53,7 +53,6 @@ This isn't a CRM with AI bolted on. It's a communication intelligence layer buil
 
 ### Why Gemini 2.5 Flash?
 - **Speed**: Sub-second responses for conversational search
-- **Multimodal**: Processes property PDFs, images, and text in one model
 - **Cost-effective**: Flash variant balances quality and API costs for MVP
 - **Long context**: Handles entire property brochures + conversation history
 
