@@ -100,7 +100,7 @@ This isn't a CRM with AI bolted on. It's a communication intelligence layer buil
 - Escalates complex queries to seller with context
 
 **C. Document Parser**
-- Extracts structured data from property PDFs using Gemini multimodal
+- Extracts structured data from property PDFs using mistral OCR3
 - Builds knowledge base for Q&A agent
 - Validates completeness for listing approval
 
