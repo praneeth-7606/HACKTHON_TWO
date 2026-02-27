@@ -33,7 +33,7 @@ const AgentChat = () => {
                 const userRes = await api.get('/users/me');
                 const userData = userRes.data.data.user;
                 setUser(userData);
-                
+
                 if (propertyId) {
                     const propRes = await api.get(`/properties/${propertyId}`);
                     setProperty(propRes.data.data.property);
@@ -118,15 +118,15 @@ const AgentChat = () => {
     return (
         <div style={{ background: '#0a0f1e', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column' }}>
             <Navbar user={user} />
-            
+
             {/* Main Container */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '20px' }}>
-                
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', padding: '20px' }}>
+
                 {/* Header */}
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    style={{ 
+                    style={{
                         background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))',
                         borderRadius: '20px',
                         padding: '24px',
@@ -135,10 +135,10 @@ const AgentChat = () => {
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                        <div style={{ 
-                            width: '60px', 
-                            height: '60px', 
-                            borderRadius: '16px', 
+                        <div style={{
+                            width: '60px',
+                            height: '60px',
+                            borderRadius: '16px',
                             background: 'linear-gradient(135deg, #6366f1, #a855f7)',
                             display: 'flex',
                             alignItems: 'center',
@@ -157,7 +157,7 @@ const AgentChat = () => {
                             </p>
                         </div>
                         <button
-                            onClick={() => navigate(`/messages?contactId=${property.seller._id}&propertyId=${propertyId}`)}
+                            onClick={() => navigate(`/buyer?propertyId=${propertyId}`)}
                             style={{
                                 padding: '10px 20px',
                                 borderRadius: '12px',
@@ -167,21 +167,24 @@ const AgentChat = () => {
                                 fontSize: '14px',
                                 fontWeight: '600',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
                             }}
-                            onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.15)'}
-                            onMouseLeave={e => e.target.style.background = 'rgba(255,255,255,0.1)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
                         >
-                            💬 Chat with Owner
+                            🏡 Back to Property
                         </button>
                     </div>
 
                     {/* Property Info */}
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                        <span style={{ 
-                            padding: '6px 14px', 
-                            borderRadius: '10px', 
-                            background: 'rgba(59,130,246,0.2)', 
+                        <span style={{
+                            padding: '6px 14px',
+                            borderRadius: '10px',
+                            background: 'rgba(59,130,246,0.2)',
                             border: '1px solid rgba(59,130,246,0.3)',
                             fontSize: '13px',
                             fontWeight: '600',
@@ -190,10 +193,10 @@ const AgentChat = () => {
                             💰 ₹{property.price?.toLocaleString()}
                         </span>
                         {property.bedrooms && (
-                            <span style={{ 
-                                padding: '6px 14px', 
-                                borderRadius: '10px', 
-                                background: 'rgba(16,185,129,0.2)', 
+                            <span style={{
+                                padding: '6px 14px',
+                                borderRadius: '10px',
+                                background: 'rgba(16,185,129,0.2)',
                                 border: '1px solid rgba(16,185,129,0.3)',
                                 fontSize: '13px',
                                 fontWeight: '600',
@@ -203,10 +206,10 @@ const AgentChat = () => {
                             </span>
                         )}
                         {property.area && (
-                            <span style={{ 
-                                padding: '6px 14px', 
-                                borderRadius: '10px', 
-                                background: 'rgba(245,158,11,0.2)', 
+                            <span style={{
+                                padding: '6px 14px',
+                                borderRadius: '10px',
+                                background: 'rgba(245,158,11,0.2)',
                                 border: '1px solid rgba(245,158,11,0.3)',
                                 fontSize: '13px',
                                 fontWeight: '600',
@@ -215,10 +218,10 @@ const AgentChat = () => {
                                 📐 {property.area} {property.areaUnit}
                             </span>
                         )}
-                        <span style={{ 
-                            padding: '6px 14px', 
-                            borderRadius: '10px', 
-                            background: 'rgba(168,85,247,0.2)', 
+                        <span style={{
+                            padding: '6px 14px',
+                            borderRadius: '10px',
+                            background: 'rgba(168,85,247,0.2)',
                             border: '1px solid rgba(168,85,247,0.3)',
                             fontSize: '13px',
                             fontWeight: '600',
@@ -230,8 +233,8 @@ const AgentChat = () => {
                 </motion.div>
 
                 {/* Messages Area */}
-                <div style={{ 
-                    flex: 1, 
+                <div style={{
+                    flex: 1,
                     background: 'rgba(15,23,42,0.6)',
                     borderRadius: '20px',
                     border: '1px solid rgba(255,255,255,0.1)',
@@ -240,11 +243,11 @@ const AgentChat = () => {
                     overflow: 'hidden',
                     marginBottom: '20px'
                 }}>
-                    
+
                     {/* Messages List */}
-                    <div style={{ 
-                        flex: 1, 
-                        overflowY: 'auto', 
+                    <div style={{
+                        flex: 1,
+                        overflowY: 'auto',
                         padding: '24px',
                         display: 'flex',
                         flexDirection: 'column',
@@ -310,9 +313,9 @@ const AgentChat = () => {
                                 >
                                     <div style={{ maxWidth: '70%' }}>
                                         {msg.role === 'agent' && (
-                                            <div style={{ 
-                                                fontSize: '11px', 
-                                                color: '#64748b', 
+                                            <div style={{
+                                                fontSize: '11px',
+                                                color: '#64748b',
                                                 marginBottom: '6px',
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -336,7 +339,7 @@ const AgentChat = () => {
                                         <div style={{
                                             padding: '14px 18px',
                                             borderRadius: '16px',
-                                            background: msg.role === 'user' 
+                                            background: msg.role === 'user'
                                                 ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
                                                 : msg.error
                                                     ? 'rgba(239,68,68,0.2)'
@@ -351,9 +354,9 @@ const AgentChat = () => {
                                         }}>
                                             {msg.content}
                                         </div>
-                                        <div style={{ 
-                                            fontSize: '10px', 
-                                            color: '#475569', 
+                                        <div style={{
+                                            fontSize: '10px',
+                                            color: '#475569',
                                             marginTop: '4px',
                                             textAlign: msg.role === 'user' ? 'right' : 'left'
                                         }}>
@@ -393,7 +396,7 @@ const AgentChat = () => {
                     </div>
 
                     {/* Input Area */}
-                    <form onSubmit={handleSend} style={{ 
+                    <form onSubmit={handleSend} style={{
                         padding: '20px 24px',
                         borderTop: '1px solid rgba(255,255,255,0.1)',
                         background: 'rgba(2,6,23,0.8)'

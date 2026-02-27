@@ -1,82 +1,163 @@
 const { Mistral } = require('@mistralai/mistralai');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// ─── CLIENTS ──────────────────────────────────────────────────────────────────
+// ─── MISTRAL CLIENT ───────────────────────────────────────────────────────────
 const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    generationConfig: {
-        maxOutputTokens: 2048,
-        temperature: 0.1,
-    }
-});
 
-// ─── JSON SCHEMA DEFINITION ───────────────────────────────────────────────────
-// This canonical schema + prompt is used by BOTH Mistral post-OCR and Gemini (fallback/text)
-const PROPERTY_SCHEMA = {
-    title: 'string — property name/title',
-    propertyType: 'one of: Apartment | Villa | Plot | Commercial | House | Studio | Other',
-    listingType: 'one of: Sale | Rent | Lease',
-    description: 'string — full description including highlights and amenities',
-    address: 'string — full street address',
-    city: 'string',
-    state: 'string',
-    pincode: 'string (digits only)',
-    landmark: 'string — nearby facility or landmark',
-    price: 'number — in INR (convert if in L/Cr: 1L=100000, 1Cr=10000000)',
-    negotiable: 'boolean',
-    maintenanceCharges: 'number or null',
-    area: 'number or null',
-    areaUnit: 'one of: sqft | sqm',
-    bedrooms: 'number or null',
-    bathrooms: 'number or null',
-    balconies: 'number or null',
-    floorNumber: 'number or null',
-    totalFloors: 'number or null',
-    furnishingStatus: 'one of: Fully Furnished | Semi Furnished | Unfurnished',
-    propertyAge: 'number (years) or null',
-    constructionStatus: 'one of: Ready to Move | Under Construction | New Construction',
-    availableFrom: 'ISO date string YYYY-MM-DD or null',
-    occupancyStatus: 'one of: Vacant | Occupied',
-    features: 'array of strings — amenities like ["Pool", "Gym", "Parking"]',
-    vastuInfo: 'string — details about Vastu compliance, orientation (e.g., North-facing), and energy flow'
+// JSON Schema for property extraction
+const propertySchema = {
+    type: "object",
+    properties: {
+        title: { type: "string", description: "Property name/title" },
+        propertyType: { type: "string", enum: ["Apartment", "Villa", "Plot", "Commercial", "House", "Studio", "Other"] },
+        listingType: { type: "string", enum: ["Sale", "Rent", "Lease"] },
+        description: { type: "string", description: "Full description including highlights and amenities" },
+        address: { type: "string", description: "Full street address" },
+        city: { type: "string" },
+        state: { type: "string" },
+        pincode: { type: "string", description: "PIN code digits only" },
+        landmark: { type: "string", description: "Nearby facility or landmark" },
+        price: { type: "number", description: "Price in INR (convert L/Cr: 1L=100000, 1Cr=10000000)" },
+        negotiable: { type: "boolean" },
+        maintenanceCharges: { type: ["number", "null"] },
+        area: { type: ["number", "null"] },
+        areaUnit: { type: "string", enum: ["sqft", "sqm"] },
+        bedrooms: { type: ["number", "null"] },
+        bathrooms: { type: ["number", "null"] },
+        balconies: { type: ["number", "null"] },
+        floorNumber: { type: ["number", "null"] },
+        totalFloors: { type: ["number", "null"] },
+        furnishingStatus: { type: "string", enum: ["Fully Furnished", "Semi Furnished", "Unfurnished"] },
+        propertyAge: { type: ["number", "null"], description: "Age in years" },
+        constructionStatus: { type: "string", enum: ["Ready to Move", "Under Construction", "New Construction"] },
+        availableFrom: { type: ["string", "null"], description: "ISO date YYYY-MM-DD" },
+        occupancyStatus: { type: "string", enum: ["Vacant", "Occupied"] },
+        features: { type: "array", items: { type: "string" }, description: "Amenities like Pool, Gym, Parking" },
+        vastuInfo: { type: "string", description: "Vastu compliance, orientation, energy flow details" }
+    },
+    required: ["title", "propertyType", "listingType", "city", "price"]
 };
 
-const EXTRACTION_PROMPT = (rawText) => `
-You are an expert real estate data extraction AI. 
-Extract ALL available property details from the following text and return ONLY a valid JSON object.
+const EXTRACTION_PROMPT = `
+Extract ALL property details from this document and return ONLY a valid JSON object matching this exact schema:
 
-EXTRACTION RULES:
-1. Map every piece of information to the correct field in the schema below.
-2. If a field cannot be determined, use null (for numbers/dates) or empty string (for strings) or [] (for arrays).
-3. Convert price shorthands: "₹85L" = 8500000, "₹1.2Cr" = 12000000, "₹2.5 Crore" = 25000000.
-4. Convert area: "1200 sq.ft" = { area: 1200, areaUnit: "sqft" }.
-5. BHK implies bedrooms: "3BHK" = { bedrooms: 3 }.
-6. For listingType: "for sale"/"sell" → "Sale", "for rent"/"rental" → "Rent", "lease" → "Lease".
-7. Do NOT add any explanation. Return ONLY the raw JSON object.
+{
+  "title": "string - Property name/title",
+  "propertyType": "string - One of: Apartment, Villa, Plot, Commercial, House, Studio, Other",
+  "listingType": "string - One of: Sale, Rent, Lease",
+  "description": "string - Full description including highlights and amenities",
+  "address": "string - Full street address",
+  "city": "string",
+  "state": "string",
+  "pincode": "string - PIN code digits only",
+  "landmark": "string - Nearby facility or landmark",
+  "price": "number - Price in INR",
+  "negotiable": "boolean",
+  "maintenanceCharges": "number or null",
+  "area": "number or null",
+  "areaUnit": "string - sqft or sqm",
+  "bedrooms": "number or null",
+  "bathrooms": "number or null",
+  "balconies": "number or null",
+  "floorNumber": "number or null",
+  "totalFloors": "number or null",
+  "furnishingStatus": "string - One of: Fully Furnished, Semi Furnished, Unfurnished",
+  "propertyAge": "number or null - Age in years",
+  "constructionStatus": "string - One of: Ready to Move, Under Construction, New Construction",
+  "availableFrom": "string or null - ISO date YYYY-MM-DD",
+  "occupancyStatus": "string - One of: Vacant, Occupied",
+  "features": "array of strings - Amenities like Pool, Gym, Parking",
+  "vastuInfo": "string - Vastu compliance, orientation, energy flow details"
+}
 
-SCHEMA:
-${JSON.stringify(PROPERTY_SCHEMA, null, 2)}
-{ "aiBrokerSummary": "Your professional broker description here..." }
+CONVERSION RULES:
 
-TEXT TO EXTRACT FROM:
-"""
-${rawText.slice(0, 8000)}
-"""
+PRICE CONVERSION:
+- "₹85L" or "85 Lakhs" = 8500000
+- "₹1.2Cr" or "1.2 Crore" = 12000000
+- "₹2.5 Crore" = 25000000
+- 1 Lakh (L) = 100,000
+- 1 Crore (Cr) = 10,000,000
 
-Return ONLY valid JSON.
+AREA CONVERSION:
+- "1200 sq.ft" or "1200 sqft" → area: 1200, areaUnit: "sqft"
+- "100 sq.m" or "100 sqm" → area: 100, areaUnit: "sqm"
+
+BEDROOM EXTRACTION:
+- "3BHK" or "3 BHK" → bedrooms: 3
+- "2BHK" → bedrooms: 2
+- "Studio" → bedrooms: 0
+
+LISTING TYPE:
+- "for sale", "sell", "selling" → "Sale"
+- "for rent", "rental", "rent" → "Rent"  
+- "lease", "leasing" → "Lease"
+
+PROPERTY TYPE:
+- Map to one of: Apartment, Villa, Plot, Commercial, House, Studio, Other
+
+FURNISHING:
+- Map to: "Fully Furnished", "Semi Furnished", or "Unfurnished"
+
+CONSTRUCTION STATUS:
+- Map to: "Ready to Move", "Under Construction", or "New Construction"
+
+FEATURES:
+- Extract amenities as array: ["Pool", "Gym", "Parking", "Security", "Garden", etc.]
+
+MISSING VALUES:
+- Use null for missing numbers/dates
+- Use empty string "" for missing text fields
+- Use empty array [] for missing features
+
+IMPORTANT: Return ONLY the JSON object, no additional text or explanation.
 `;
 
 // ─── SAFE JSON PARSE ──────────────────────────────────────────────────────────
 function safeParseJSON(text) {
     try {
-        const cleaned = text.replace(/```json|```/gi, '').trim();
+        // First, try direct parse (Gemini with responseSchema should return clean JSON)
+        try {
+            const parsed = JSON.parse(text);
+            console.log('[PARSE] Direct JSON parse successful');
+            return parsed;
+        } catch (directErr) {
+            console.log('[PARSE] Direct parse failed, attempting cleanup...');
+        }
+
+        // Remove markdown code blocks and extra whitespace
+        let cleaned = text
+            .replace(/```json\s*/gi, '')
+            .replace(/```\s*/g, '')
+            .replace(/^\s+|\s+$/g, '')
+            .trim();
+
+        // Try parsing cleaned version
+        try {
+            const parsed = JSON.parse(cleaned);
+            console.log('[PARSE] Cleaned JSON parse successful');
+            return parsed;
+        } catch (cleanErr) {
+            console.log('[PARSE] Cleaned parse failed, extracting JSON object...');
+        }
+
+        // Extract JSON object from text
         const start = cleaned.indexOf('{');
         const end = cleaned.lastIndexOf('}');
-        if (start === -1 || end === -1) return null;
-        return JSON.parse(cleaned.slice(start, end + 1));
+
+        if (start === -1 || end === -1) {
+            console.error('[PARSE] No JSON object found in response');
+            console.error('[PARSE] Response text:', text.slice(0, 500));
+            return null;
+        }
+
+        const jsonStr = cleaned.slice(start, end + 1);
+        const parsed = JSON.parse(jsonStr);
+        console.log('[PARSE] Extracted JSON parse successful');
+        return parsed;
+
     } catch (e) {
+        console.error('[PARSE] All JSON parse attempts failed:', e.message);
+        console.error('[PARSE] Original text (first 1000 chars):', text.slice(0, 1000));
         return null;
     }
 }
@@ -86,97 +167,308 @@ function countPopulated(obj) {
     return Object.values(obj).filter(v => v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)).length;
 }
 
-// ─── MODE 1: PDF → MISTRAL OCR 3 → GEMINI STRUCTURING ────────────────────────
+// ─── MODE 1: PDF → MISTRAL OCR WITH JSON SCHEMA ──────────────────────────────
 async function parsePDFWithMistral(fileBuffer, mimeType = 'application/pdf') {
     const base64 = fileBuffer.toString('base64');
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    console.log('[PARSE] Mode: PDF_UPLOAD | Starting Mistral OCR 3 attempt...');
-
-    let rawText = '';
+    console.log('[PARSE] Mode: PDF_UPLOAD | Starting Mistral OCR with JSON schema...');
 
     try {
+        // Use Mistral OCR with structured output
         const ocrResponse = await mistral.ocr.process({
             model: 'mistral-ocr-latest',
-            document: { type: 'document_url', documentUrl: dataUrl }
+            document: {
+                type: 'document_url',
+                documentUrl: dataUrl
+            },
+            prompt: EXTRACTION_PROMPT
         });
 
-        // Combine text from all pages efficiently
-        rawText = ocrResponse.pages
-            .map(p => p.markdown || p.text || '')
-            .join('\n')
-            .slice(0, 12000); // Hard cap on memory usage
+        console.log('[PARSE] Mistral OCR response received');
+        console.log('[PARSE] Response structure:', JSON.stringify(Object.keys(ocrResponse), null, 2));
 
-        console.log(`[PARSE] Mistral OCR: SUCCESS | chars=${rawText.length} | pages=${ocrResponse.pages.length}`);
-    } catch (mistralErr) {
-        console.error(`[PARSE] Mistral OCR: FAILED (${mistralErr.message}) | Switching to Gemini AI fallback...`);
+        // Extract text from OCR response
+        let extractedText = '';
 
-        // FALLBACK: Use Gemini vision on the base64 PDF text extracted naively
-        // Gemini can't read raw PDF, so we just pass available information
-        rawText = `[PDF binary content - unable to OCR. Attempting AI inference from filename/context]`;
-    }
-
-    // ── STEP 2: Gemini structures the raw OCR text into JSON ──
-    return await structureWithGemini(rawText, 'PDF_OCR');
-}
-
-// ─── MODE 2: TEXT / STT → GEMINI ─────────────────────────────────────────────
-async function parseTextWithGemini(userText) {
-    console.log(`[PARSE] Mode: TEXT/STT_INPUT | chars=${userText.length} | Sending to Gemini...`);
-    return await structureWithGemini(userText, 'TEXT_STT');
-}
-
-// ─── SHARED: GEMINI JSON STRUCTURING ─────────────────────────────────────────
-async function structureWithGemini(rawText, sourceMode) {
-    console.log(`[PARSE][${sourceMode}] Gemini structuring raw text → JSON schema...`);
-    try {
-        const result = await geminiModel.generateContent(EXTRACTION_PROMPT(rawText));
-        const responseText = result.response.text();
-        const parsed = safeParseJSON(responseText);
-
-        if (!parsed) {
-            console.warn(`[PARSE][${sourceMode}] Gemini returned unparseable JSON. Returning empty form.`);
-            return { success: false, data: {}, fieldsPopulated: 0, source: sourceMode };
+        if (ocrResponse.pages && Array.isArray(ocrResponse.pages)) {
+            extractedText = ocrResponse.pages
+                .map(p => p.markdown || p.text || '')
+                .join('\n');
+            console.log('[PARSE] Extracted text from pages');
+        } else if (ocrResponse.text) {
+            extractedText = ocrResponse.text;
+            console.log('[PARSE] Extracted text from response.text');
+        } else if (typeof ocrResponse === 'string') {
+            extractedText = ocrResponse;
+            console.log('[PARSE] Response is string');
         }
 
-        const fieldsPopulated = countPopulated(parsed);
-        console.log(`[PARSE][${sourceMode}] Done: ${fieldsPopulated}/${Object.keys(PROPERTY_SCHEMA).length} fields populated`);
+        if (!extractedText || extractedText.length < 50) {
+            console.error('[PARSE] Insufficient text extracted from OCR');
+            console.error('[PARSE] Text length:', extractedText.length);
+            return {
+                success: false,
+                data: {},
+                fieldsPopulated: 0,
+                total: Object.keys(propertySchema.properties).length,
+                source: 'MISTRAL_OCR',
+                error: 'Insufficient text extracted from document'
+            };
+        }
 
-        return { success: true, data: parsed, fieldsPopulated, total: Object.keys(PROPERTY_SCHEMA).length, source: sourceMode };
-    } catch (geminiErr) {
-        console.error(`[PARSE][${sourceMode}] Gemini FAILED: ${geminiErr.message}`);
-        return { success: false, data: {}, fieldsPopulated: 0, source: sourceMode, error: geminiErr.message };
+        console.log(`[PARSE] OCR extracted ${extractedText.length} characters`);
+        console.log(`[PARSE] First 200 chars:`, extractedText.slice(0, 200));
+
+        // Use Mistral Chat to structure the raw OCR text into JSON
+        console.log('[PARSE] Passing OCR text to Mistral Chat for JSON structuring...');
+        const chatResponse = await mistral.chat.complete({
+            model: 'mistral-large-latest',
+            messages: [
+                {
+                    role: 'system',
+                    content: EXTRACTION_PROMPT
+                },
+                {
+                    role: 'user',
+                    content: `Extract ALL property details from this OCR text and return strictly a valid JSON object matching the schema:\n\n${extractedText}`
+                }
+            ],
+            responseFormat: {
+                type: 'json_object'
+            }
+        });
+
+        const responseContent = chatResponse.choices?.[0]?.message?.content;
+
+        if (!responseContent) {
+            console.error('[PARSE] No content in Mistral chat response after OCR');
+            return {
+                success: false,
+                data: {},
+                fieldsPopulated: 0,
+                total: Object.keys(propertySchema.properties).length,
+                source: 'MISTRAL_OCR_CHAT',
+                error: 'No content in structuring response'
+            };
+        }
+
+        // Parse the JSON from the AI response
+        const parsed = safeParseJSON(responseContent);
+
+        if (!parsed) {
+            console.error('[PARSE] Failed to parse JSON from structured text');
+            console.error('[PARSE] Text sample:', responseContent.slice(0, 500));
+            return {
+                success: false,
+                data: {},
+                fieldsPopulated: 0,
+                total: Object.keys(propertySchema.properties).length,
+                source: 'MISTRAL_OCR_CHAT',
+                error: 'Failed to parse JSON from AI output'
+            };
+        }
+
+        // Validate and clean the data
+        const cleanedData = validateAndCleanData(parsed);
+        const fieldsPopulated = countPopulated(cleanedData);
+
+        console.log(`[PARSE] Mistral OCR: SUCCESS | ${fieldsPopulated}/${Object.keys(propertySchema.properties).length} fields populated`);
+        console.log(`[PARSE] Populated fields:`, Object.keys(cleanedData).filter(k => cleanedData[k] !== null && cleanedData[k] !== '' && !(Array.isArray(cleanedData[k]) && cleanedData[k].length === 0)));
+
+        return {
+            success: true,
+            data: cleanedData,
+            fieldsPopulated,
+            total: Object.keys(propertySchema.properties).length,
+            source: 'MISTRAL_OCR'
+        };
+
+    } catch (mistralErr) {
+        console.error(`[PARSE] Mistral OCR FAILED: ${mistralErr.message}`);
+        console.error(`[PARSE] Full error:`, mistralErr);
+        return {
+            success: false,
+            data: {},
+            fieldsPopulated: 0,
+            total: Object.keys(propertySchema.properties).length,
+            source: 'MISTRAL_OCR',
+            error: mistralErr.message
+        };
     }
+}
+
+// ─── MODE 2: TEXT → MISTRAL CHAT WITH JSON SCHEMA ────────────────────────────
+async function parseTextWithMistral(userText) {
+    console.log(`[PARSE] Mode: TEXT/STT_INPUT | chars=${userText.length} | Sending to Mistral...`);
+
+    try {
+        const chatResponse = await mistral.chat.complete({
+            model: 'mistral-large-latest',
+            messages: [
+                {
+                    role: 'system',
+                    content: EXTRACTION_PROMPT
+                },
+                {
+                    role: 'user',
+                    content: `Extract property details from this text:\n\n${userText}`
+                }
+            ],
+            responseFormat: {
+                type: 'json_object'
+            }
+        });
+
+        console.log('[PARSE] Mistral chat response received');
+
+        // Extract the content from chat response
+        const responseContent = chatResponse.choices?.[0]?.message?.content;
+
+        if (!responseContent) {
+            console.error('[PARSE] No content in Mistral chat response');
+            return {
+                success: false,
+                data: {},
+                fieldsPopulated: 0,
+                total: Object.keys(propertySchema.properties).length,
+                source: 'MISTRAL_CHAT',
+                error: 'No content in response'
+            };
+        }
+
+        // Parse the JSON response
+        const parsed = safeParseJSON(responseContent);
+
+        if (!parsed) {
+            console.error('[PARSE] Failed to parse JSON from Mistral response');
+            return {
+                success: false,
+                data: {},
+                fieldsPopulated: 0,
+                total: Object.keys(propertySchema.properties).length,
+                source: 'MISTRAL_CHAT',
+                error: 'Failed to parse JSON response'
+            };
+        }
+
+        // Validate and clean the data
+        const cleanedData = validateAndCleanData(parsed);
+        const fieldsPopulated = countPopulated(cleanedData);
+
+        console.log(`[PARSE] Mistral Chat: SUCCESS | ${fieldsPopulated}/${Object.keys(propertySchema.properties).length} fields populated`);
+
+        return {
+            success: true,
+            data: cleanedData,
+            fieldsPopulated,
+            total: Object.keys(propertySchema.properties).length,
+            source: 'MISTRAL_CHAT'
+        };
+
+    } catch (mistralErr) {
+        console.error(`[PARSE] Mistral Chat FAILED: ${mistralErr.message}`);
+        console.error(`[PARSE] Full error:`, mistralErr);
+        return {
+            success: false,
+            data: {},
+            fieldsPopulated: 0,
+            total: Object.keys(propertySchema.properties).length,
+            source: 'MISTRAL_CHAT',
+            error: mistralErr.message
+        };
+    }
+}
+
+// ─── VALIDATE AND CLEAN DATA ──────────────────────────────────────────────────
+function validateAndCleanData(data) {
+    const cleaned = {};
+
+    // Ensure all schema fields exist
+    Object.keys(propertySchema.properties).forEach(key => {
+        const value = data[key];
+
+        // Handle null/undefined
+        if (value === null || value === undefined) {
+            cleaned[key] = null;
+            return;
+        }
+
+        // Handle empty strings
+        if (typeof value === 'string' && value.trim() === '') {
+            cleaned[key] = '';
+            return;
+        }
+
+        // Handle arrays
+        if (Array.isArray(value)) {
+            cleaned[key] = value.filter(v => v !== null && v !== undefined && v !== '');
+            return;
+        }
+
+        // Handle numbers - ensure they're actually numbers
+        if (typeof value === 'string' && ['price', 'maintenanceCharges', 'area', 'bedrooms', 'bathrooms', 'balconies', 'floorNumber', 'totalFloors', 'propertyAge'].includes(key)) {
+            const num = parseFloat(value);
+            cleaned[key] = isNaN(num) ? null : num;
+            return;
+        }
+
+        // Handle booleans
+        if (key === 'negotiable') {
+            cleaned[key] = Boolean(value);
+            return;
+        }
+
+        // Default: keep the value as-is
+        cleaned[key] = value;
+    });
+
+    return cleaned;
 }
 
 async function generatePropertySummary(property) {
     console.log(`[SUMMARY] Generating AI Broker Summary for: ${property.title}...`);
-    const prompt = `
-    You are a professional real estate broker in India. 
-    Create a compelling 4-6 line summary for the following property.
-    
-    PROPERTY DATA:
-    - Title: ${property.title}
-    - Type: ${property.propertyType}
-    - Listing: ${property.listingType}
-    - Price: ₹${property.price?.toLocaleString()}
-    - Area: ${property.area} ${property.areaUnit}
-    - Location: ${property.location}, ${property.city}
-    - Features: ${property.features?.join(', ')}
-    - Vastu: ${property.vastuInfo || 'Not specified'}
-    
-    RESPONSE STRUCTURE:
-    1. A hook about the property's unique value.
-    2. "Suitable For:" segment identifying the target buyer/tenant.
-    3. "Usage:" segment suggesting the best way to utilize the space.
-    4. A mention of Vastu insights based on the provided info.
-    
-    Keep it professional, upscale, and persuasive. Do NOT use markdown bolding in the response body, just plain text with newlines.
-    `;
+    const prompt = `You are a professional real estate broker in India. 
+Create a compelling 4-6 line summary for the following property.
+
+PROPERTY DATA:
+- Title: ${property.title}
+- Type: ${property.propertyType}
+- Listing: ${property.listingType}
+- Price: ₹${property.price?.toLocaleString()}
+- Area: ${property.area} ${property.areaUnit}
+- Location: ${property.location}, ${property.city}
+- Features: ${property.features?.join(', ')}
+- Vastu: ${property.vastuInfo || 'Not specified'}
+
+RESPONSE STRUCTURE:
+1. A hook about the property's unique value.
+2. "Suitable For:" segment identifying the target buyer/tenant.
+3. "Usage:" segment suggesting the best way to utilize the space.
+4. A mention of Vastu insights based on the provided info.
+
+Keep it professional, upscale, and persuasive. Do NOT use markdown bolding in the response body, just plain text with newlines.`;
 
     try {
-        const result = await geminiModel.generateContent(prompt);
-        const summary = result.response.text().trim();
+        const chatResponse = await mistral.chat.complete({
+            model: 'mistral-large-latest',
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            temperature: 0.7,
+            maxTokens: 500
+        });
+
+        const summary = chatResponse.choices?.[0]?.message?.content?.trim();
+
+        if (!summary) {
+            console.error('[SUMMARY] No content in Mistral response');
+            return "I'm currently analyzing the market potential of this property. Check back shortly for my professional broker insights.";
+        }
+
         console.log(`[SUMMARY] Generation SUCCESS`);
         return summary;
     } catch (err) {
@@ -185,4 +477,4 @@ async function generatePropertySummary(property) {
     }
 }
 
-module.exports = { parsePDFWithMistral, parseTextWithGemini, generatePropertySummary };
+module.exports = { parsePDFWithMistral, parseTextWithMistral, generatePropertySummary };

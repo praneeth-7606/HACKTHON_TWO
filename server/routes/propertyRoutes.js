@@ -21,6 +21,7 @@ router.get('/seller/my-properties', protect, restrictTo('seller'), propertyContr
 
 router.get('/:id', propertyController.getProperty);
 router.patch('/:id', protect, propertyController.updateProperty);
+router.delete('/:id', protect, restrictTo('seller', 'admin'), propertyController.deleteProperty);
 
 // ─── SAVE/UNSAVE PROPERTY (protected) ────────────────────────────────────────
 router.post('/:id/save', protect, propertyController.saveProperty);

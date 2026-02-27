@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Navbar = ({ user }) => {
+const Navbar = ({ user, onToggleSidebar, sidebarOpen }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -36,7 +36,7 @@ const Navbar = ({ user }) => {
                 api.get('/messages/unread-count')
                     .then(r => setUnreadCount(r.data.data.unreadCount || 0))
                     .catch(() => { });
-                
+
                 api.get('/messages/unread-messages')
                     .then(r => setMessageNotifications(r.data.data.messages || []))
                     .catch(() => { });
@@ -61,16 +61,57 @@ const Navbar = ({ user }) => {
 
     return (
         <nav className="navbar">
-            <a href="/" className="nav-logo">
-                <div className="logo-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                        <polyline points="9 22 9 12 15 12 15 22" />
-                    </svg>
-                </div>
-                <span>EstatePulse</span>
-                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: '600', letterSpacing: '1px' }}>AI</span>
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Sidebar Toggle - only shows when onToggleSidebar is provided */}
+                {onToggleSidebar && (
+                    <motion.button
+                        whileHover={{ scale: 1.08, background: 'rgba(59,130,246,0.15)' }}
+                        whileTap={{ scale: 0.92 }}
+                        onClick={onToggleSidebar}
+                        style={{
+                            width: '38px', height: '38px', borderRadius: '11px',
+                            background: sidebarOpen ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${sidebarOpen ? 'rgba(59,130,246,0.25)' : 'rgba(255,255,255,0.08)'}`,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexDirection: 'column', gap: sidebarOpen ? '0px' : '4px',
+                            padding: '0', transition: 'all 0.3s ease',
+                        }}
+                        aria-label="Toggle sidebar"
+                    >
+                        {/* Animated hamburger lines */}
+                        <span style={{
+                            display: 'block', width: '16px', height: '2px', borderRadius: '2px',
+                            background: sidebarOpen ? '#60a5fa' : '#94a3b8',
+                            transition: 'all 0.3s ease',
+                            transform: sidebarOpen ? 'rotate(45deg) translate(1px, 1px)' : 'none',
+                        }} />
+                        <span style={{
+                            display: 'block', width: '16px', height: '2px', borderRadius: '2px',
+                            background: sidebarOpen ? '#60a5fa' : '#94a3b8',
+                            transition: 'all 0.3s ease',
+                            opacity: sidebarOpen ? 0 : 1,
+                            transform: sidebarOpen ? 'scaleX(0)' : 'scaleX(1)',
+                        }} />
+                        <span style={{
+                            display: 'block', width: '16px', height: '2px', borderRadius: '2px',
+                            background: sidebarOpen ? '#60a5fa' : '#94a3b8',
+                            transition: 'all 0.3s ease',
+                            transform: sidebarOpen ? 'rotate(-45deg) translate(1px, -1px)' : 'none',
+                        }} />
+                    </motion.button>
+                )}
+
+                <a href="/" className="nav-logo">
+                    <div className="logo-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <polyline points="9 22 9 12 15 12 15 22" />
+                        </svg>
+                    </div>
+                    <span>EstatePulse</span>
+                    <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: '600', letterSpacing: '1px' }}>AI</span>
+                </a>
+            </div>
 
             <div className="nav-links">
                 {user && (
@@ -94,20 +135,20 @@ const Navbar = ({ user }) => {
                 <a href="/messages" style={{ color: location.pathname === '/messages' ? '#60a5fa' : 'white', fontSize: '14px', fontWeight: '700', margin: '0 15px', textDecoration: 'none', position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     Messages
                     {unreadCount > 0 && (
-                        <span style={{ 
-                            position: 'absolute', 
-                            top: '-8px', 
-                            right: '-12px', 
-                            background: 'linear-gradient(135deg, #ef4444, #dc2626)', 
-                            color: 'white', 
-                            fontSize: '10px', 
-                            fontWeight: '800', 
-                            padding: '2px 6px', 
+                        <span style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-12px',
+                            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                            color: 'white',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            padding: '2px 6px',
                             borderRadius: '10px',
                             minWidth: '18px',
                             textAlign: 'center',
                             boxShadow: '0 2px 8px rgba(239,68,68,0.5)',
-                            border: '2px solid #020817'
+                            border: '2px solid #0a1628'
                         }}>
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
@@ -124,84 +165,43 @@ const Navbar = ({ user }) => {
                     </div>
                 )}
 
-                <button
-                    onClick={() => {
-                        setShowMessages(!showMessages);
-                        setShowNotif(false);
-                    }}
-                    style={{ 
-                        background: 'rgba(255,255,255,0.04)', 
-                        border: '1px solid var(--border)', 
-                        width: '36px', 
-                        height: '36px', 
-                        borderRadius: '10px', 
-                        color: 'white', 
-                        cursor: 'pointer', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        position: 'relative',
-                        marginRight: '8px'
-                    }}
-                >
-                    💬
-                    {unreadCount > 0 && (
-                        <span style={{ 
-                            position: 'absolute', 
-                            top: '-6px', 
-                            right: '-6px', 
-                            background: 'linear-gradient(135deg, #ef4444, #dc2626)', 
-                            color: 'white', 
-                            fontSize: '10px', 
-                            fontWeight: '800', 
-                            padding: '2px 6px', 
-                            borderRadius: '10px',
-                            minWidth: '18px',
-                            textAlign: 'center',
-                            boxShadow: '0 2px 8px rgba(239,68,68,0.5)',
-                            border: '2px solid #020817'
-                        }}>
-                            {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                    )}
-                </button>
-
+                
                 <AnimatePresence>
                     {showMessages && (
                         <motion.div
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            style={{ 
-                                position: 'absolute', 
-                                top: '70px', 
-                                right: '80px', 
-                                width: '380px', 
-                                background: 'rgba(13,21,38,0.95)', 
-                                backdropFilter: 'blur(20px)', 
-                                border: '1px solid rgba(255,255,255,0.1)', 
-                                borderRadius: '20px', 
-                                boxShadow: '0 20px 50px rgba(0,0,0,0.5)', 
-                                zIndex: 100, 
+                            style={{
+                                position: 'absolute',
+                                top: '70px',
+                                right: '80px',
+                                width: '380px',
+                                background: 'rgba(13,21,38,0.95)',
+                                backdropFilter: 'blur(20px)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '20px',
+                                boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                                zIndex: 100,
                                 padding: '20px',
                                 maxHeight: '500px',
                                 display: 'flex',
                                 flexDirection: 'column'
                             }}
                         >
-                            <div style={{ 
-                                fontSize: '14px', 
-                                fontWeight: '800', 
-                                color: 'white', 
-                                marginBottom: '16px', 
-                                display: 'flex', 
+                            <div style={{
+                                fontSize: '14px',
+                                fontWeight: '800',
+                                color: 'white',
+                                marginBottom: '16px',
+                                display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center'
                             }}>
                                 <span>MESSAGE NOTIFICATIONS</span>
                                 {unreadCount > 0 && (
-                                    <span style={{ 
-                                        fontSize: '11px', 
+                                    <span style={{
+                                        fontSize: '11px',
                                         color: 'white',
                                         background: 'linear-gradient(135deg, #ef4444, #dc2626)',
                                         padding: '4px 10px',
@@ -212,25 +212,25 @@ const Navbar = ({ user }) => {
                                     </span>
                                 )}
                             </div>
-                            <div style={{ 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                gap: '10px', 
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px',
                                 overflowY: 'auto',
                                 flex: 1
                             }} className="custom-scroll">
                                 {messageNotifications.length > 0 ? messageNotifications.map((msg, i) => (
-                                    <div 
-                                        key={i} 
+                                    <div
+                                        key={i}
                                         onClick={() => {
                                             handleMarkMessageAsRead(msg.sender._id);
                                             navigate(`/messages?contactId=${msg.sender._id}${msg.propertyId ? `&propertyId=${msg.propertyId._id}` : ''}`);
                                             setShowMessages(false);
                                         }}
-                                        style={{ 
-                                            padding: '14px', 
-                                            background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.05))', 
-                                            borderRadius: '14px', 
+                                        style={{
+                                            padding: '14px',
+                                            background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.05))',
+                                            borderRadius: '14px',
                                             border: '1px solid rgba(59,130,246,0.2)',
                                             cursor: 'pointer',
                                             transition: 'all 0.2s'
@@ -244,37 +244,37 @@ const Navbar = ({ user }) => {
                                             e.currentTarget.style.transform = 'translateX(0)';
                                         }}
                                     >
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             gap: '10px',
                                             marginBottom: '8px'
                                         }}>
-                                            <div style={{ 
-                                                width: '36px', 
-                                                height: '36px', 
-                                                borderRadius: '10px', 
-                                                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                justifyContent: 'center', 
-                                                fontSize: '14px', 
+                                            <div style={{
+                                                width: '36px',
+                                                height: '36px',
+                                                borderRadius: '10px',
+                                                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '14px',
                                                 fontWeight: '800',
                                                 flexShrink: 0
                                             }}>
                                                 {msg.sender.name[0].toUpperCase()}
                                             </div>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ 
-                                                    fontSize: '13px', 
-                                                    fontWeight: '700', 
+                                                <div style={{
+                                                    fontSize: '13px',
+                                                    fontWeight: '700',
                                                     color: 'white',
                                                     marginBottom: '2px'
                                                 }}>
                                                     {msg.sender.name}
                                                 </div>
-                                                <div style={{ 
-                                                    fontSize: '11px', 
+                                                <div style={{
+                                                    fontSize: '11px',
                                                     color: '#64748b',
                                                     textTransform: 'uppercase',
                                                     letterSpacing: '0.5px',
@@ -284,9 +284,9 @@ const Navbar = ({ user }) => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ 
-                                            fontSize: '13px', 
-                                            color: '#94a3b8', 
+                                        <div style={{
+                                            fontSize: '13px',
+                                            color: '#94a3b8',
                                             lineHeight: '1.4',
                                             marginBottom: '8px',
                                             overflow: 'hidden',
@@ -296,8 +296,8 @@ const Navbar = ({ user }) => {
                                             {msg.text}
                                         </div>
                                         {msg.propertyId && (
-                                            <div style={{ 
-                                                fontSize: '11px', 
+                                            <div style={{
+                                                fontSize: '11px',
                                                 color: '#60a5fa',
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -307,8 +307,8 @@ const Navbar = ({ user }) => {
                                                 <span>🏡</span> {msg.propertyId.title}
                                             </div>
                                         )}
-                                        <div style={{ 
-                                            fontSize: '10px', 
+                                        <div style={{
+                                            fontSize: '10px',
                                             color: '#475569',
                                             display: 'flex',
                                             justifyContent: 'space-between',
@@ -343,8 +343,8 @@ const Navbar = ({ user }) => {
                                         </div>
                                     </div>
                                 )) : (
-                                    <div style={{ 
-                                        textAlign: 'center', 
+                                    <div style={{
+                                        textAlign: 'center',
                                         padding: '40px 20px',
                                         color: '#475569',
                                         fontSize: '13px'
@@ -392,7 +392,7 @@ const Navbar = ({ user }) => {
                 >
                     🔔
                     {notifications.some(n => !n.read) && (
-                        <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', border: '2px solid #020817' }} />
+                        <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', border: '2px solid #0a1628' }} />
                     )}
                 </button>
 
@@ -428,7 +428,7 @@ const Navbar = ({ user }) => {
                     Sign Out
                 </button>
             </div>
-            
+
             <style>{`
                 .custom-scroll::-webkit-scrollbar { 
                     width: 6px; 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
@@ -9,6 +9,7 @@ const SavedProperties = () => {
     const [user, setUser] = useState(null);
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     useEffect(() => {
         loadData();
@@ -46,44 +47,43 @@ const SavedProperties = () => {
     };
 
     return (
-        <div style={{ background: 'radial-gradient(ellipse at 10% 20%, rgba(59,130,246,0.08) 0%, transparent 50%), radial-gradient(ellipse at 90% 80%, rgba(139,92,246,0.06) 0%, transparent 50%), #020817', minHeight: '100vh' }}>
+        <div style={{ background: 'radial-gradient(ellipse at 10% 20%, rgba(59,130,246,0.08) 0%, transparent 50%), radial-gradient(ellipse at 90% 80%, rgba(139,92,246,0.06) 0%, transparent 50%), #0a1628', minHeight: '100vh' }}>
             <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(59,130,246,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.025) 1px, transparent 1px)', backgroundSize: '56px 56px', zIndex: 0, pointerEvents: 'none' }} />
 
-            <Navbar user={user} />
+            <Navbar user={user} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} sidebarOpen={sidebarOpen} />
 
-            <div className="sidebar" style={{ top: '64px' }}>
-                <div style={{ padding: '20px 16px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'white', fontWeight: '800', marginBottom: '16px' }}>
-                        {user?.name?.[0]?.toUpperCase() || 'B'}
-                    </div>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'white', marginBottom: '4px' }}>{user?.name || 'Buyer Account'}</div>
-                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#60a5fa', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{user?.profession || 'Verified Buyer'}</div>
-                </div>
-
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '12px 16px' }} />
-
-                {[
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>, label: 'Discovery', action: () => navigate('/buyer') },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>, label: '🔍 Smart Search', action: () => navigate('/search'), highlight: true },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>, label: 'Messages', action: () => navigate('/messages') },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, label: 'My Profile', action: () => navigate('/profile') },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>, label: 'Saved', active: true, action: () => {} },
-                ].map(item => (
-                    <button key={item.label} className={`sidebar-item ${item.active ? 'active' : ''}`} onClick={item.action} style={item.highlight ? { background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#6ee7b7' } : {}}>
-                        {item.icon}{item.label}
-                    </button>
-                ))}
-
-                <div style={{ flex: 1 }} />
-
-                <div style={{ padding: '16px', borderRadius: '14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', margin: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />
-                        <span style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase' }}>Saved Collection</span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.5' }}>Your bookmarked properties for quick access.</div>
-                </div>
-            </div>
+            <AnimatePresence>
+                {sidebarOpen && (
+                    <motion.div initial={{ x: -260, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -260, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="sidebar" style={{ top: '64px' }}>
+                        <div style={{ padding: '20px 16px' }}>
+                            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'white', fontWeight: '800', marginBottom: '16px' }}>
+                                {user?.name?.[0]?.toUpperCase() || 'B'}
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: '800', color: 'white', marginBottom: '4px' }}>{user?.name || 'Buyer Account'}</div>
+                            <div style={{ fontSize: '11px', fontWeight: '700', color: '#60a5fa', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{user?.profession || 'Verified Buyer'}</div>
+                        </div>
+                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '12px 16px' }} />
+                        {[
+                            { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>, label: '🔍 Smart Search', action: () => navigate('/search'), highlight: true },
+                            { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>, label: 'Messages', action: () => navigate('/messages') },
+                            { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, label: 'My Profile', action: () => navigate('/profile') },
+                            { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>, label: 'Saved', active: true, action: () => { } },
+                        ].map(item => (
+                            <button key={item.label} className={`sidebar-item ${item.active ? 'active' : ''}`} onClick={item.action} style={item.highlight ? { background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#6ee7b7' } : {}}>
+                                {item.icon}{item.label}
+                            </button>
+                        ))}
+                        <div style={{ flex: 1 }} />
+                        <div style={{ padding: '16px', borderRadius: '14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', margin: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />
+                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase' }}>Saved Collection</span>
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.5' }}>Your bookmarked properties for quick access.</div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div className="main-content">
                 <div style={{ padding: '48px 40px 60px', maxWidth: '1440px', margin: '0 auto' }}>
@@ -110,9 +110,20 @@ const SavedProperties = () => {
 
                     {/* Grid */}
                     {loading ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '320px', flexDirection: 'column', gap: '16px' }}>
-                            <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '3px solid rgba(245,158,11,0.15)', borderTopColor: '#f59e0b', animation: 'spin 0.9s linear infinite' }} />
-                            <span style={{ color: '#475569', fontSize: '14px' }}>Loading saved properties...</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+                            {[1, 2, 3, 4, 5, 6].map(i => (
+                                <div key={i} style={{ borderRadius: '24px', overflow: 'hidden', background: 'rgba(13,21,38,0.85)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                                    <div className="skeleton" style={{ height: '220px', borderRadius: 0 }} />
+                                    <div style={{ padding: '20px 22px' }}>
+                                        <div className="skeleton skeleton-title" style={{ width: '75%', marginBottom: '8px' }} />
+                                        <div className="skeleton skeleton-text" style={{ width: '50%', marginBottom: '14px' }} />
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <div className="skeleton" style={{ width: '60px', height: '28px', borderRadius: '8px' }} />
+                                            <div className="skeleton" style={{ width: '60px', height: '28px', borderRadius: '8px' }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : properties.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '80px 40px', borderRadius: '24px', border: '2px dashed rgba(255,255,255,0.07)' }}>

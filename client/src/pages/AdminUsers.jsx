@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
-import Toast from '../components/Toast';
+import Navbar from '../components/Navbar';
+import { ToastContainer } from '../components/Toast';
 
 export default function AdminUsers() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [filters, setFilters] = useState({
         role: searchParams.get('role') || 'all',
         status: searchParams.get('status') || 'all',
@@ -16,6 +16,16 @@ export default function AdminUsers() {
     });
     const [selectedUser, setSelectedUser] = useState(null);
     const [showStatusModal, setShowStatusModal] = useState(false);
+    const [toasts, setToasts] = useState([]);
+
+    const addToast = (message, type = 'info') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type, duration: 4000 }]);
+    };
+
+    const removeToast = (id) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    };
 
     useEffect(() => {
         fetchUsers();
@@ -32,7 +42,7 @@ export default function AdminUsers() {
             const res = await api.get(`/admin/users?${params.toString()}`);
             setUsers(res.data.data.users);
         } catch (err) {
-            setToast({ show: true, message: 'Failed to load users', type: 'error' });
+            addToast('Failed to load users', 'error');
         } finally {
             setLoading(false);
         }
@@ -44,12 +54,12 @@ export default function AdminUsers() {
                 accountStatus: newStatus,
                 statusReason: reason
             });
-            setToast({ show: true, message: 'User status updated successfully', type: 'success' });
+            addToast('✓ User status updated successfully!', 'success');
             setShowStatusModal(false);
             setSelectedUser(null);
             fetchUsers();
         } catch (err) {
-            setToast({ show: true, message: err.response?.data?.message || 'Failed to update status', type: 'error' });
+            addToast(err.response?.data?.message || 'Failed to update status', 'error');
         }
     };
 
@@ -74,6 +84,8 @@ export default function AdminUsers() {
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
             </div>
+            <Navbar user={null} />
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 {/* Header */}
@@ -226,13 +238,7 @@ export default function AdminUsers() {
                 />
             )}
 
-            {toast.show && (
-                <Toast
-                    message={toast.message}
-                    type={toast.type}
-                    onClose={() => setToast({ ...toast, show: false })}
-                />
-            )}
+
         </div>
     );
 }
@@ -361,11 +367,10 @@ function StatusModal({ user, onClose, onSubmit }) {
                                 <button
                                     key={s}
                                     onClick={() => setStatus(s)}
-                                    className={`p-3 rounded-lg border-2 transition-all font-medium ${
-                                        status === s
-                                            ? 'border-blue-500 bg-blue-500/20 text-blue-300'
-                                            : 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-600'
-                                    }`}
+                                    className={`p-3 rounded-lg border-2 transition-all font-medium ${status === s
+                                        ? 'border-blue-500 bg-blue-500/20 text-blue-300'
+                                        : 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-600'
+                                        }`}
                                 >
                                     {s === 'active' && '✅ Active'}
                                     {s === 'inactive' && '⏸️ Inactive'}

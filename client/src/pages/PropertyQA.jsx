@@ -8,7 +8,7 @@ const PropertyQA = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const propertyId = searchParams.get('propertyId');
-    
+
     const [user, setUser] = useState(null);
     const [questions, setQuestions] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -17,26 +17,26 @@ const PropertyQA = () => {
     const [submitting, setSubmitting] = useState(false);
     const [completed, setCompleted] = useState(false);
     const messagesEndRef = useRef(null);
-    
+
     useEffect(() => {
         const loadData = async () => {
             try {
                 const userRes = await api.get('/users/me');
                 setUser(userRes.data.data.user);
-                
+
                 if (!propertyId) {
                     console.error('No propertyId provided');
                     alert('Property ID is missing. Redirecting to dashboard.');
                     navigate('/seller');
                     return;
                 }
-                
+
                 console.log('[PropertyQA] Loading questions for property:', propertyId);
-                
+
                 // Generate questions
                 const qaRes = await api.post(`/qa/generate/${propertyId}`);
                 console.log('[PropertyQA] Questions received:', qaRes.data.data.questions);
-                
+
                 if (qaRes.data.data.questions && qaRes.data.data.questions.length > 0) {
                     setQuestions(qaRes.data.data.questions);
                     setLoading(false);
@@ -45,7 +45,7 @@ const PropertyQA = () => {
                     alert('Failed to generate questions. Please try again.');
                     setLoading(false);
                 }
-                
+
             } catch (err) {
                 console.error('[PropertyQA] Error loading questions:', err);
                 alert(`Failed to load questions: ${err.response?.data?.message || err.message}`);
@@ -53,24 +53,24 @@ const PropertyQA = () => {
                 // Don't navigate away on error - let user retry
             }
         };
-        
+
         loadData();
     }, [propertyId]);
-    
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [currentIndex]);
-    
+
     const handleSubmit = async (skipQuestion = false) => {
         setSubmitting(true);
-        
+
         try {
             // Submit answer (or null if skipped)
             await api.post(`/qa/answer/${propertyId}`, {
                 questionIndex: currentIndex,
                 answer: skipQuestion ? null : answer.trim()
             });
-            
+
             // Move to next question
             if (currentIndex < questions.length - 1) {
                 setCurrentIndex(currentIndex + 1);
@@ -80,7 +80,7 @@ const PropertyQA = () => {
                 await api.post(`/qa/complete/${propertyId}`);
                 setCompleted(true);
             }
-            
+
         } catch (err) {
             console.error('Error submitting answer:', err);
             alert('Failed to submit answer. Please try again.');
@@ -88,14 +88,14 @@ const PropertyQA = () => {
             setSubmitting(false);
         }
     };
-    
+
     const handleFinish = () => {
         navigate('/seller');
     };
-    
+
     if (loading) {
         return (
-            <div style={{ background: '#020817', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+            <div style={{ background: '#0a1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                 <div style={{ textAlign: 'center' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '3px solid rgba(99,102,241,0.2)', borderTopColor: '#6366f1', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
                     <p>Generating questions...</p>
@@ -103,14 +103,14 @@ const PropertyQA = () => {
             </div>
         );
     }
-    
+
     if (completed) {
         const answeredCount = questions.filter((_, i) => i < currentIndex + 1).length;
-        
+
         return (
-            <div style={{ background: '#020817', minHeight: '100vh', color: 'white' }}>
+            <div style={{ background: '#0a1628', minHeight: '100vh', color: 'white' }}>
                 <Navbar user={user} />
-                
+
                 <div style={{ maxWidth: '800px', margin: '0 auto', padding: '80px 24px', textAlign: 'center' }}>
                     <motion.div
                         initial={{ scale: 0 }}
@@ -126,7 +126,7 @@ const PropertyQA = () => {
                         <p style={{ fontSize: '20px', color: '#94a3b8', marginBottom: '32px' }}>
                             You answered {answeredCount} out of {questions.length} questions
                         </p>
-                        
+
                         <div style={{
                             background: 'rgba(16,185,129,0.1)',
                             border: '1px solid rgba(16,185,129,0.2)',
@@ -139,11 +139,11 @@ const PropertyQA = () => {
                                 Your Property is Now Live!
                             </h3>
                             <p style={{ color: '#6ee7b7', lineHeight: '1.7' }}>
-                                Your answers will help buyers make informed decisions and reduce unnecessary questions. 
+                                Your answers will help buyers make informed decisions and reduce unnecessary questions.
                                 This increases your chances of finding serious buyers faster!
                             </p>
                         </div>
-                        
+
                         <button
                             onClick={handleFinish}
                             style={{
@@ -165,14 +165,14 @@ const PropertyQA = () => {
             </div>
         );
     }
-    
+
     const currentQuestion = questions[currentIndex];
     const progress = ((currentIndex + 1) / questions.length) * 100;
-    
+
     return (
-        <div style={{ background: '#020817', minHeight: '100vh', color: 'white' }}>
+        <div style={{ background: '#0a1628', minHeight: '100vh', color: 'white' }}>
             <Navbar user={user} />
-            
+
             <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 24px' }}>
                 {/* Header */}
                 <motion.div
@@ -194,7 +194,7 @@ const PropertyQA = () => {
                             Question {currentIndex + 1} of {questions.length}
                         </span>
                     </div>
-                    
+
                     <h1 style={{ fontSize: '32px', fontWeight: '900', marginBottom: '12px', fontFamily: 'Space Grotesk' }}>
                         Help Buyers Know Your Property Better
                     </h1>
@@ -202,7 +202,7 @@ const PropertyQA = () => {
                         Answer a few questions that buyers typically ask. You can skip any question.
                     </p>
                 </motion.div>
-                
+
                 {/* Progress Bar */}
                 <div style={{
                     height: '8px',
@@ -222,7 +222,7 @@ const PropertyQA = () => {
                         }}
                     />
                 </div>
-                
+
                 {/* Question Card */}
                 <AnimatePresence mode="wait">
                     <motion.div
@@ -254,7 +254,7 @@ const PropertyQA = () => {
                         }}>
                             {currentQuestion.category}
                         </div>
-                        
+
                         {/* Question */}
                         <h2 style={{
                             fontSize: '24px',
@@ -265,7 +265,7 @@ const PropertyQA = () => {
                         }}>
                             {currentQuestion.question}
                         </h2>
-                        
+
                         {/* Answer Input */}
                         <textarea
                             value={answer}
@@ -291,7 +291,7 @@ const PropertyQA = () => {
                         />
                     </motion.div>
                 </AnimatePresence>
-                
+
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
                     <button
@@ -311,7 +311,7 @@ const PropertyQA = () => {
                     >
                         Skip Question
                     </button>
-                    
+
                     <button
                         onClick={() => handleSubmit(false)}
                         disabled={submitting || !answer.trim()}
@@ -342,10 +342,10 @@ const PropertyQA = () => {
                         )}
                     </button>
                 </div>
-                
+
                 <div ref={messagesEndRef} />
             </div>
-            
+
             <style>{`
                 @keyframes spin {
                     to { transform: rotate(360deg); }

@@ -1,6 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+
+// Password strength calculator
+function getPasswordStrength(password) {
+    if (!password) return { score: 0, label: '', color: '' };
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    if (score <= 1) return { score: 1, label: 'Weak', color: '#ef4444', className: 'weak' };
+    if (score <= 2) return { score: 2, label: 'Fair', color: '#f59e0b', className: 'fair' };
+    if (score <= 3) return { score: 3, label: 'Good', color: '#3b82f6', className: 'good' };
+    return { score: 4, label: 'Strong', color: '#10b981', className: 'strong' };
+}
 
 const AuthPage = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -8,6 +23,7 @@ const AuthPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [animKey, setAnimKey] = useState(0);
+    const passwordStrength = useMemo(() => getPasswordStrength(formData.password), [formData.password]);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [showTerms, setShowTerms] = useState(false);
     const navigate = useNavigate();
@@ -20,13 +36,13 @@ const AuthPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         // Check terms acceptance for signup
         if (!isLogin && !acceptedTerms) {
             setError('Please accept the Terms and Conditions to continue');
             return;
         }
-        
+
         setLoading(true);
         setError('');
         try {
@@ -94,7 +110,7 @@ const AuthPage = () => {
                 <div style={{ position: 'relative', zIndex: 1 }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: '999px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', marginBottom: '28px' }}>
                         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 8px #3b82f6', animation: 'pulse-glow 2s infinite' }} />
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#60a5fa', letterSpacing: '0.5px' }}>Gemini AI — Active</span>
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#60a5fa', letterSpacing: '0.5px' }}>Mistral AI — Active</span>
                     </div>
                     <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 'clamp(32px, 3.5vw, 52px)', fontWeight: '800', lineHeight: '1.1', letterSpacing: '-1.5px', color: 'white', marginBottom: '20px' }}>
                         Close Deals<br />
@@ -202,8 +218,19 @@ const AuthPage = () => {
                             <svg style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', width: '18px', height: '18px', color: '#475569', pointerEvents: 'none' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                             <input className="input" style={{ paddingLeft: '44px' }} type="password" placeholder={isLogin ? 'Password' : 'Password (min. 8 characters)'} value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required minLength="8" />
                         </div>
-
-                        {/* Terms and Conditions for Signup */}
+                        {/* Password Strength Meter */}
+                        {!isLogin && formData.password && (
+                            <div style={{ animation: 'slide-in-up 0.2s ease' }}>
+                                <div className="password-strength">
+                                    {[1, 2, 3, 4].map(i => (
+                                        <div key={i} className={`password-strength-bar ${i <= passwordStrength.score ? `filled ${passwordStrength.className}` : ''}`} />
+                                    ))}
+                                </div>
+                                <div style={{ fontSize: '12px', fontWeight: '600', color: passwordStrength.color, marginTop: '6px' }}>
+                                    {passwordStrength.label}
+                                </div>
+                            </div>
+                        )}
                         {!isLogin && (
                             <div style={{ animation: 'slide-in-up 0.3s ease' }}>
                                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -265,7 +292,7 @@ const AuthPage = () => {
                         </div>
                         <div style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(80vh - 140px)', color: '#94a3b8', fontSize: '14px', lineHeight: '1.7' }}>
                             <h4 style={{ color: 'white', fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Platform Rules and Guidelines</h4>
-                            
+
                             <h5 style={{ color: '#60a5fa', fontSize: '15px', fontWeight: '600', marginTop: '20px', marginBottom: '10px' }}>For All Users:</h5>
                             <ul style={{ paddingLeft: '20px', marginBottom: '16px' }}>
                                 <li style={{ marginBottom: '8px' }}>You must be at least 18 years old to use this platform</li>

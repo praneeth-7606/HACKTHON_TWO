@@ -71,11 +71,11 @@ const PropertyDetail = ({ property: initialProperty, onClose, user }) => {
     useEffect(() => {
         if (property && user) {
             leadTracker.init(property._id);
-            
+
             // Track images viewed when carousel is interacted with
             leadTracker.trackImagesViewed();
         }
-        
+
         // Cleanup when modal closes
         return () => {
             leadTracker.cleanup();
@@ -87,7 +87,7 @@ const PropertyDetail = ({ property: initialProperty, onClose, user }) => {
         if (property) {
             api.get(`/properties/${property._id}`).then(res => {
                 setProperty(res.data.data.property);
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }, []);
 
@@ -169,7 +169,7 @@ const PropertyDetail = ({ property: initialProperty, onClose, user }) => {
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#020817' }}>
+            style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#0a1628' }}>
 
             {/* Full Window Container */}
             <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 200 }}
@@ -294,7 +294,7 @@ const PropertyDetail = ({ property: initialProperty, onClose, user }) => {
                                     <div style={{ borderLeft: '2px solid rgba(59,130,246,0.2)', paddingLeft: '24px', marginLeft: '10px' }}>
                                         {property.previousUsage.map((u, i) => (
                                             <div key={i} style={{ position: 'relative', marginBottom: '16px' }}>
-                                                <div style={{ position: 'absolute', left: '-31px', top: '4px', width: '12px', height: '12px', borderRadius: '50%', background: '#3b82f6', border: '3px solid #020817' }} />
+                                                <div style={{ position: 'absolute', left: '-31px', top: '4px', width: '12px', height: '12px', borderRadius: '50%', background: '#3b82f6', border: '3px solid #0a1628' }} />
                                                 <div style={{ fontSize: '14px', color: 'white', fontWeight: '700' }}>{u.userType} — {u.purpose}</div>
                                                 <div style={{ fontSize: '12px', color: '#475569', fontWeight: '600' }}>Occupied for {u.duration}</div>
                                             </div>
@@ -310,7 +310,7 @@ const PropertyDetail = ({ property: initialProperty, onClose, user }) => {
 
                             {/* Q&A Section - Show only answered questions */}
                             {property.sellerQA && property.sellerQA.filter(qa => qa.answer && qa.answer.trim()).length > 0 && (
-                                <section 
+                                <section
                                     style={{ marginBottom: '48px' }}
                                     onMouseEnter={() => {
                                         if (!qaOpened) {
@@ -504,20 +504,20 @@ const PropertyDetail = ({ property: initialProperty, onClose, user }) => {
                                     // Navigate to messages - tracking will happen when buyer actually sends message
                                     navigate(`/messages?contactId=${property.seller._id}&propertyId=${property._id}`);
                                 }}
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '14px', 
-                                    borderRadius: '16px', 
-                                    background: 'linear-gradient(135deg, #10b981, #059669)', 
-                                    border: 'none', 
-                                    color: 'white', 
-                                    fontWeight: '800', 
-                                    cursor: 'pointer', 
-                                    marginBottom: '16px', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    gap: '8px', 
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    borderRadius: '16px',
+                                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                                    border: 'none',
+                                    color: 'white',
+                                    fontWeight: '800',
+                                    cursor: 'pointer',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
                                     boxShadow: '0 4px 12px rgba(16,185,129,0.4)',
                                     transition: 'all 0.2s'
                                 }}
@@ -603,6 +603,7 @@ const BuyerDiscovery = () => {
     const [toast, setToast] = useState(null);
     const [user, setUser] = useState(null);
     const [savedPropertyIds, setSavedPropertyIds] = useState(new Set());
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
@@ -614,11 +615,11 @@ const BuyerDiscovery = () => {
                 setSavedPropertyIds(new Set(r.data.data.user.savedProperties.map(id => id.toString())));
             }
         }).catch(() => { });
-        
-        api.get('/properties').then(r => { 
-            setProperties(r.data.data.properties); 
+
+        api.get('/properties').then(r => {
+            setProperties(r.data.data.properties);
             setLoading(false);
-            
+
             // Check if propertyId is in URL and open that property
             const propertyId = searchParams.get('propertyId');
             if (propertyId) {
@@ -629,18 +630,18 @@ const BuyerDiscovery = () => {
             }
         }).catch(() => setLoading(false));
     }, [searchParams]);
-    
+
     const handleSaveToggle = async (propertyId, e) => {
         e.stopPropagation();
         try {
             const res = await api.post(`/properties/${propertyId}/save`);
             const isSaved = res.data.data.saved;
-            
+
             // Track engagement if saved
             if (isSaved) {
                 leadTracker.trackEngagement('save');
             }
-            
+
             setSavedPropertyIds(prev => {
                 const newSet = new Set(prev);
                 if (isSaved) {
@@ -707,10 +708,10 @@ const BuyerDiscovery = () => {
     });
 
     return (
-        <div style={{ background: 'radial-gradient(ellipse at 10% 20%, rgba(59,130,246,0.08) 0%, transparent 50%), radial-gradient(ellipse at 90% 80%, rgba(139,92,246,0.06) 0%, transparent 50%), #020817', minHeight: '100vh', overflowX: 'hidden' }}>
+        <div style={{ background: 'radial-gradient(ellipse at 10% 20%, rgba(59,130,246,0.08) 0%, transparent 50%), radial-gradient(ellipse at 90% 80%, rgba(139,92,246,0.06) 0%, transparent 50%), #0a1628', minHeight: '100vh', overflowX: 'hidden' }}>
             <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(59,130,246,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.025) 1px, transparent 1px)', backgroundSize: '56px 56px', zIndex: 0, pointerEvents: 'none' }} />
 
-            <Navbar user={user} />
+            <Navbar user={user} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} sidebarOpen={sidebarOpen} />
 
             <AnimatePresence>
                 {selectedProperty && (
@@ -718,39 +719,38 @@ const BuyerDiscovery = () => {
                 )}
             </AnimatePresence>
 
-            <div className="sidebar" style={{ top: '64px' }}>
-                <div style={{ padding: '20px 16px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'white', fontWeight: '800', marginBottom: '16px' }}>
-                        {user?.name?.[0]?.toUpperCase() || 'B'}
-                    </div>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'white', marginBottom: '4px' }}>{user?.name || 'Buyer Account'}</div>
-                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#60a5fa', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{user?.profession || 'Verified Buyer'}</div>
-                </div>
-
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '12px 16px' }} />
-
-                {[
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>, label: 'Discovery', active: true, action: () => { } },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>, label: '🔍 Smart Search', action: () => navigate('/search'), highlight: true },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>, label: 'Messages', action: () => navigate('/messages') },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, label: 'My Profile', action: () => navigate('/profile') },
-                    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>, label: 'Saved', action: () => navigate('/saved') },
-                ].map(item => (
-                    <button key={item.label} className={`sidebar-item ${item.active ? 'active' : ''}`} onClick={item.action} style={item.highlight ? { background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#6ee7b7' } : {}}>
-                        {item.icon}{item.label}
-                    </button>
-                ))}
-
-                <div style={{ flex: 1 }} />
-
-                <div style={{ padding: '16px', borderRadius: '14px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', margin: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
-                        <span style={{ fontSize: '10px', fontWeight: '700', color: '#6ee7b7', textTransform: 'uppercase' }}>Broker AI Mode</span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.5' }}>Personalized analysis based on your {user?.profession || 'interests'}.</div>
-                </div>
-            </div>
+            <AnimatePresence>
+                {sidebarOpen && (
+                    <motion.div initial={{ x: -260, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -260, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="sidebar" style={{ top: '64px' }}>
+                        <div style={{ padding: '20px 16px' }}>
+                            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'white', fontWeight: '800', marginBottom: '16px' }}>
+                                {user?.name?.[0]?.toUpperCase() || 'B'}
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: '800', color: 'white', marginBottom: '4px' }}>{user?.name || 'Buyer Account'}</div>
+                            <div style={{ fontSize: '11px', fontWeight: '700', color: '#60a5fa', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{user?.profession || 'Verified Buyer'}</div>
+                        </div>
+                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '12px 16px' }} />
+                        {[
+                            { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>, label: '🔍 Smart Search', active: true, action: () => navigate('/search'), highlight: true },
+                            { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>, label: 'Messages', action: () => navigate('/messages') },
+                            { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, label: 'My Profile', action: () => navigate('/profile') },
+                            { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>, label: 'Saved', action: () => navigate('/saved') },
+                        ].map(item => (
+                            <button key={item.label} className={`sidebar-item ${item.active ? 'active' : ''}`} onClick={item.action} style={item.highlight ? { background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#6ee7b7' } : {}}>
+                                {item.icon}{item.label}
+                            </button>
+                        ))}
+                        <div style={{ flex: 1 }} />
+                        <div style={{ padding: '16px', borderRadius: '14px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', margin: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#6ee7b7', textTransform: 'uppercase' }}>Broker AI Mode</span>
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.5' }}>Personalized analysis based on your {user?.profession || 'interests'}.</div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div className="main-content">
                 <div style={{ padding: '48px 40px 60px', maxWidth: '1440px', margin: '0' }}>
@@ -794,9 +794,21 @@ const BuyerDiscovery = () => {
 
                     {/* GRID */}
                     {loading ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '320px', flexDirection: 'column', gap: '16px' }}>
-                            <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '3px solid rgba(59,130,246,0.15)', borderTopColor: '#3b82f6', animation: 'spin 0.9s linear infinite' }} />
-                            <span style={{ color: '#475569', fontSize: '14px' }}>Loading the collection...</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+                            {[1, 2, 3, 4, 5, 6].map(i => (
+                                <div key={i} style={{ borderRadius: '24px', overflow: 'hidden', background: 'rgba(13,21,38,0.85)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                                    <div className="skeleton" style={{ height: '220px', borderRadius: '0' }} />
+                                    <div style={{ padding: '20px 22px 22px' }}>
+                                        <div className="skeleton skeleton-title" style={{ width: '75%', marginBottom: '10px' }} />
+                                        <div className="skeleton skeleton-text" style={{ width: '50%', marginBottom: '14px' }} />
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <div className="skeleton" style={{ width: '60px', height: '28px', borderRadius: '8px' }} />
+                                            <div className="skeleton" style={{ width: '60px', height: '28px', borderRadius: '8px' }} />
+                                            <div className="skeleton" style={{ width: '60px', height: '28px', borderRadius: '8px' }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
@@ -821,7 +833,7 @@ const BuyerDiscovery = () => {
                                         <div style={{ position: 'absolute', top: '14px', left: '14px', zIndex: 4, padding: '4px 12px', borderRadius: '999px', background: `${STATUS_COLOR[p.listingType] || '#3b82f6'}28`, border: `1px solid ${STATUS_COLOR[p.listingType] || '#3b82f6'}60`, fontSize: '10px', fontWeight: '800', color: STATUS_COLOR[p.listingType] || '#60a5fa', letterSpacing: '1px' }}>
                                             FOR {p.listingType?.toUpperCase() || 'SALE'}
                                         </div>
-                                        
+
                                         {/* Save Button */}
                                         <button
                                             onClick={(e) => handleSaveToggle(p._id, e)}
@@ -853,7 +865,7 @@ const BuyerDiscovery = () => {
                                                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                                             </svg>
                                         </button>
-                                        
+
                                         <div style={{ position: 'absolute', bottom: '14px', right: '14px', zIndex: 3, fontFamily: 'Space Grotesk', fontWeight: '800', fontSize: '22px', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.9)' }}>
                                             {priceAbbr(p.price)}
                                         </div>

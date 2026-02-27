@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '../components/Navbar';
 
 export default function AdminScoringMechanisms() {
     const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function AdminScoringMechanisms() {
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
             </div>
+            <Navbar user={null} />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 {/* Header */}
@@ -35,11 +37,10 @@ export default function AdminScoringMechanisms() {
                 <div className="flex gap-4 mb-8">
                     <button
                         onClick={() => setActiveTab('buyer')}
-                        className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
-                            activeTab === 'buyer'
+                        className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'buyer'
                                 ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/50'
                                 : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
-                        }`}
+                            }`}
                     >
                         <div className="flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,11 +51,10 @@ export default function AdminScoringMechanisms() {
                     </button>
                     <button
                         onClick={() => setActiveTab('seller')}
-                        className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
-                            activeTab === 'seller'
+                        className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'seller'
                                 ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/50'
                                 : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
-                        }`}
+                            }`}
                     >
                         <div className="flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

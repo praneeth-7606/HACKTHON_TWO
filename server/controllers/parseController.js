@@ -1,5 +1,5 @@
 const multer = require('multer');
-const { parsePDFWithMistral, parseTextWithGemini } = require('../services/parseService');
+const { parsePDFWithMistral, parseTextWithMistral } = require('../services/parseService');
 
 // ─── MULTER: MEMORY STORAGE (no disk writes, low memory) ─────────────────────
 const upload = multer({
@@ -48,7 +48,7 @@ const parseText = async (req, res) => {
         }
         console.log(`[PARSE] Received text input: "${text.slice(0, 80)}..."`);
 
-        const result = await parseTextWithGemini(text.trim());
+        const result = await parseTextWithMistral(text.trim());
 
         return res.status(200).json({
             status: 'success',

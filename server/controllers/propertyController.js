@@ -8,14 +8,14 @@ const { generatePropertyImages } = require('../services/imageService');
 exports.createProperty = async (req, res) => {
     try {
         // Check if images are provided
-        let propertyData = { 
-            ...req.body, 
+        let propertyData = {
+            ...req.body,
             seller: req.user.id,
             // New properties require admin approval
             approvalStatus: 'pending',
             submittedForApproval: new Date()
         };
-        
+
         // If no images provided, generate them automatically
         if (!propertyData.images || propertyData.images.length === 0) {
             console.log('[CREATE_PROPERTY] No images provided, generating automatically...');
@@ -25,7 +25,7 @@ exports.createProperty = async (req, res) => {
                 console.log('[CREATE_PROPERTY] Generated', imageResult.images.length, 'images');
             }
         }
-        
+
         const newProperty = await Property.create(propertyData);
 
         // Trigger AI Broker Summary in background
@@ -38,10 +38,10 @@ exports.createProperty = async (req, res) => {
             }
         });
 
-        res.status(201).json({ 
-            status: 'success', 
+        res.status(201).json({
+            status: 'success',
             message: 'Property submitted for admin approval',
-            data: { property: newProperty } 
+            data: { property: newProperty }
         });
     } catch (err) {
         res.status(400).json({ status: 'fail', message: err.message });
@@ -51,8 +51,11 @@ exports.createProperty = async (req, res) => {
 exports.getAllProperties = async (req, res) => {
     try {
         // Build query
-        let query = { approvalStatus: 'approved' };
-        
+        let query = {
+            approvalStatus: 'approved',
+            listingStatus: 'Active' // Only show active listings to buyers
+        };
+
         // Filter out hidden properties (unless admin)
         if (req.user?.role !== 'admin') {
             query.$or = [
@@ -60,7 +63,7 @@ exports.getAllProperties = async (req, res) => {
                 { 'visibility.isVisible': { $exists: false } } // For old properties without visibility field
             ];
         }
-        
+
         const properties = await Property.find(query).populate('seller', 'name email sellerRating');
         res.status(200).json({ status: 'success', results: properties.length, data: { properties } });
     } catch (err) {
@@ -74,15 +77,15 @@ exports.getAllProperties = async (req, res) => {
 exports.getSellerProperties = async (req, res) => {
     try {
         const sellerId = req.user.id;
-        
+
         // Get only this seller's properties
         const properties = await Property.find({ seller: sellerId })
             .sort({ createdAt: -1 });
-        
-        res.status(200).json({ 
-            status: 'success', 
-            results: properties.length, 
-            data: { properties } 
+
+        res.status(200).json({
+            status: 'success',
+            results: properties.length,
+            data: { properties }
         });
     } catch (err) {
         res.status(400).json({ status: 'fail', message: err.message });
@@ -224,31 +227,31 @@ exports.getNotifications = async (req, res) => {
 exports.updateProperty = async (req, res) => {
     try {
         const property = await Property.findById(req.params.id);
-        
+
         if (!property) {
             return res.status(404).json({ status: 'fail', message: 'Property not found' });
         }
-        
+
         // Verify ownership
         if (property.seller.toString() !== req.user.id) {
             return res.status(403).json({ status: 'fail', message: 'Not authorized to update this property' });
         }
-        
+
         // Update allowed fields
-        const allowedUpdates = ['title', 'description', 'price', 'listingStatus', 'negotiable', 
-                                'maintenanceCharges', 'area', 'bedrooms', 'bathrooms', 'balconies',
-                                'furnishingStatus', 'availableFrom', 'occupancyStatus', 'features', 'vastuInfo'];
-        
+        const allowedUpdates = ['title', 'description', 'price', 'listingStatus', 'negotiable',
+            'maintenanceCharges', 'area', 'bedrooms', 'bathrooms', 'balconies',
+            'furnishingStatus', 'availableFrom', 'occupancyStatus', 'features', 'vastuInfo'];
+
         Object.keys(req.body).forEach(key => {
             if (allowedUpdates.includes(key)) {
                 property[key] = req.body[key];
             }
         });
-        
+
         await property.save();
-        
-        res.status(200).json({ 
-            status: 'success', 
+
+        res.status(200).json({
+            status: 'success',
             data: { property },
             message: 'Property updated successfully'
         });
@@ -265,15 +268,15 @@ exports.saveProperty = async (req, res) => {
         }
 
         const user = await User.findById(req.user.id);
-        
+
         // Check if already saved
         const isSaved = user.savedProperties.some(id => id.toString() === property._id.toString());
-        
+
         if (isSaved) {
             // Unsave
             user.savedProperties = user.savedProperties.filter(id => id.toString() !== property._id.toString());
             await user.save();
-            
+
             return res.status(200).json({
                 status: 'success',
                 data: { saved: false },
@@ -283,7 +286,7 @@ exports.saveProperty = async (req, res) => {
             // Save
             user.savedProperties.push(property._id);
             await user.save();
-            
+
             return res.status(200).json({
                 status: 'success',
                 data: { saved: true },
@@ -301,11 +304,42 @@ exports.getSavedProperties = async (req, res) => {
             path: 'savedProperties',
             populate: { path: 'seller', select: 'name email ownerRating' }
         });
-        
+
         res.status(200).json({
             status: 'success',
             results: user.savedProperties.length,
             data: { properties: user.savedProperties }
+        });
+    } catch (err) {
+        res.status(400).json({ status: 'fail', message: err.message });
+    }
+};
+
+exports.deleteProperty = async (req, res) => {
+    try {
+        const property = await Property.findById(req.params.id);
+
+        if (!property) {
+            return res.status(404).json({ status: 'fail', message: 'Property not found' });
+        }
+
+        // Verify ownership - only seller can delete their own property
+        if (property.seller.toString() !== req.user.id) {
+            return res.status(403).json({ status: 'fail', message: 'Not authorized to delete this property' });
+        }
+
+        // Delete the property
+        await Property.findByIdAndDelete(req.params.id);
+
+        // Also remove from any user's saved properties
+        await User.updateMany(
+            { savedProperties: req.params.id },
+            { $pull: { savedProperties: req.params.id } }
+        );
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Property deleted successfully'
         });
     } catch (err) {
         res.status(400).json({ status: 'fail', message: err.message });

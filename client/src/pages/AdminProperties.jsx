@@ -1,496 +1,316 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import Navbar from '../components/Navbar';
 import api from '../services/api';
 import Toast from '../components/Toast';
 
 export default function AdminProperties() {
     const navigate = useNavigate();
+    const [user, setUser] = useState(null);
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [filter, setFilter] = useState('pending');
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [modalType, setModalType] = useState('approve'); // 'approve' or 'reject'
+    const [modalType, setModalType] = useState('approve');
     const [notes, setNotes] = useState('');
     const [rejectionReason, setRejectionReason] = useState('');
 
     useEffect(() => {
+        api.get('/users/me').then(r => setUser(r.data.data.user)).catch(() => navigate('/auth'));
         fetchProperties();
     }, [filter]);
 
     const fetchProperties = async () => {
         try {
             setLoading(true);
-            const endpoint = filter === 'pending' 
-                ? '/admin/properties/pending'
-                : `/admin/properties?status=${filter}`;
+            const endpoint = filter === 'pending' ? '/admin/properties/pending' : `/admin/properties?status=${filter}`;
             const res = await api.get(endpoint);
             setProperties(res.data.data.properties);
-        } catch (err) {
-            setToast({ show: true, message: 'Failed to load properties', type: 'error' });
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { setToast({ show: true, message: 'Failed to load properties', type: 'error' }); }
+        finally { setLoading(false); }
     };
 
     const handleApprove = async () => {
         try {
-            await api.patch(`/admin/properties/${selectedProperty._id}/approve`, {
-                adminNotes: notes
-            });
+            await api.patch(`/admin/properties/${selectedProperty._id}/approve`, { adminNotes: notes });
             setToast({ show: true, message: 'Property approved successfully', type: 'success' });
-            setShowModal(false);
-            setNotes('');
-            fetchProperties();
-        } catch (err) {
-            setToast({ show: true, message: 'Failed to approve property', type: 'error' });
-        }
+            setShowModal(false); setNotes(''); fetchProperties();
+        } catch (err) { setToast({ show: true, message: 'Failed to approve', type: 'error' }); }
     };
 
     const handleReject = async () => {
-        if (!rejectionReason.trim()) {
-            setToast({ show: true, message: 'Please provide a rejection reason', type: 'error' });
-            return;
-        }
+        if (!rejectionReason.trim()) { setToast({ show: true, message: 'Please provide a rejection reason', type: 'error' }); return; }
         try {
-            await api.patch(`/admin/properties/${selectedProperty._id}/reject`, {
-                rejectionReason,
-                adminNotes: notes
-            });
+            await api.patch(`/admin/properties/${selectedProperty._id}/reject`, { rejectionReason, adminNotes: notes });
             setToast({ show: true, message: 'Property rejected', type: 'success' });
-            setShowModal(false);
-            setNotes('');
-            setRejectionReason('');
-            fetchProperties();
-        } catch (err) {
-            setToast({ show: true, message: 'Failed to reject property', type: 'error' });
-        }
+            setShowModal(false); setNotes(''); setRejectionReason(''); fetchProperties();
+        } catch (err) { setToast({ show: true, message: 'Failed to reject', type: 'error' }); }
     };
 
     const approveAllExisting = async () => {
-        if (!confirm('Approve all existing properties? This is a one-time migration action.')) return;
+        if (!confirm('Approve all existing properties?')) return;
         try {
             const res = await api.post('/admin/properties/approve-existing');
-            setToast({ 
-                show: true, 
-                message: `Approved ${res.data.data.count} existing properties`, 
-                type: 'success' 
-            });
+            setToast({ show: true, message: `Approved ${res.data.data.count} properties`, type: 'success' });
             fetchProperties();
-        } catch (err) {
-            setToast({ show: true, message: 'Failed to approve existing properties', type: 'error' });
-        }
+        } catch (err) { setToast({ show: true, message: 'Failed', type: 'error' }); }
     };
 
-    const getStatusBadge = (status) => {
-        const badges = {
-            pending: {
-                bg: 'bg-gradient-to-r from-amber-500 to-orange-500',
-                text: 'text-white',
-                icon: '⏳'
-            },
-            approved: {
-                bg: 'bg-gradient-to-r from-emerald-500 to-green-500',
-                text: 'text-white',
-                icon: '✓'
-            },
-            rejected: {
-                bg: 'bg-gradient-to-r from-red-500 to-rose-500',
-                text: 'text-white',
-                icon: '✕'
-            },
-            under_review: {
-                bg: 'bg-gradient-to-r from-blue-500 to-cyan-500',
-                text: 'text-white',
-                icon: '👁'
-            }
-        };
-        
-        const badge = badges[status] || badges.pending;
-        
-        return (
-            <span className={`${badge.bg} ${badge.text} px-3 py-1.5 text-xs font-bold rounded-full shadow-lg flex items-center gap-1.5 backdrop-blur-sm`}>
-                <span>{badge.icon}</span>
-                <span className="uppercase tracking-wider">{status.replace('_', ' ')}</span>
-            </span>
-        );
+    const statusConfig = {
+        pending: { bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.4)', color: '#fbbf24', icon: '⏳', label: 'PENDING' },
+        approved: { bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.4)', color: '#6ee7b7', icon: '✓', label: 'APPROVED' },
+        rejected: { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.4)', color: '#fca5a5', icon: '✕', label: 'REJECTED' },
+        under_review: { bg: 'rgba(59,130,246,0.15)', border: 'rgba(59,130,246,0.4)', color: '#93c5fd', icon: '👁', label: 'REVIEW' },
     };
+
+    const inputStyle = { width: '100%', padding: '14px 18px', borderRadius: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '14px', outline: 'none', fontFamily: 'Inter', resize: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' };
 
     return (
-        <div className="bg-dashboard" style={{ minHeight: '100vh', paddingTop: '80px' }}>
-            <div className="grid-pattern"></div>
-            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 32px', position: 'relative', zIndex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
-                    <div>
-                        <h1 className="heading-lg" style={{ color: 'white', marginBottom: '8px' }}>Property Management</h1>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Review and approve property listings</p>
+        <div className="bg-dashboard">
+            <div className="grid-pattern" />
+            <Navbar user={user} />
+
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '100px 32px 60px', position: 'relative', zIndex: 1 }}>
+                {/* Header */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <motion.button whileHover={{ scale: 1.05, x: -2 }} whileTap={{ scale: 0.95 }} onClick={() => navigate('/admin')}
+                            style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>←</motion.button>
+                        <div>
+                            <h1 style={{ fontFamily: 'Space Grotesk', fontSize: '28px', fontWeight: '800', color: 'white', marginBottom: '4px' }}>Property Management</h1>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Review and approve property listings</p>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <button
-                            onClick={approveAllExisting}
-                            className="btn btn-primary"
-                        >
-                            Approve All Existing
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin')}
-                            className="btn btn-secondary"
-                        >
-                            ← Back
-                        </button>
-                    </div>
-                </div>
+                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={approveAllExisting}
+                        style={{ padding: '10px 24px', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}>
+                        ✓ Approve All Existing
+                    </motion.button>
+                </motion.div>
 
                 {/* Filter Tabs */}
-                <div className="glass card" style={{ marginBottom: '24px', padding: '8px' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {['pending', 'approved', 'rejected', 'all'].map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setFilter(tab)}
-                                className="btn"
-                                style={{
-                                    flex: 1,
-                                    background: filter === tab ? 'linear-gradient(135deg, var(--accent-blue), #2563eb)' : 'transparent',
-                                    color: filter === tab ? 'white' : 'var(--text-secondary)',
-                                    border: filter === tab ? 'none' : '1px solid var(--border)',
-                                    textTransform: 'capitalize'
-                                }}
-                            >
-                                {tab}
-                            </button>
-                        ))}
-                    </div>
+                <div className="glass" style={{ marginBottom: '24px', padding: '6px', borderRadius: '16px', display: 'flex', gap: '4px' }}>
+                    {['pending', 'approved', 'rejected', 'all'].map(tab => (
+                        <motion.button key={tab} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setFilter(tab)}
+                            style={{
+                                flex: 1, padding: '10px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700', textTransform: 'capitalize', transition: 'all 0.2s',
+                                background: filter === tab ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'transparent',
+                                color: filter === tab ? 'white' : 'var(--text-muted)',
+                                boxShadow: filter === tab ? '0 4px 16px rgba(59,130,246,0.3)' : 'none'
+                            }}>
+                            {tab === 'pending' && '⏳ '}{tab === 'approved' && '✓ '}{tab === 'rejected' && '✕ '}{tab === 'all' && '📋 '}{tab}
+                        </motion.button>
+                    ))}
                 </div>
 
                 {/* Properties Grid */}
                 {loading ? (
-                    <div style={{ textAlign: 'center', padding: '80px 0' }}>
-                        <div className="loader" style={{ margin: '0 auto', width: '48px', height: '48px', borderWidth: '4px' }}></div>
-                        <p style={{ color: 'var(--text-secondary)', marginTop: '16px' }}>Loading properties...</p>
-                    </div>
-                ) : properties.length === 0 ? (
-                    <div className="glass card" style={{ padding: '80px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.3 }}>🏘️</div>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>No properties found</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {properties.map(property => (
-                            <div 
-                                key={property._id} 
-                                className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl overflow-hidden border border-slate-700 hover:border-blue-500 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-1"
-                            >
-                                {/* Image Container */}
-                                <div className="relative h-56 overflow-hidden">
-                                    <img
-                                        src={property.images?.[0] || '/placeholder.jpg'}
-                                        alt={property.title}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                    />
-                                    {/* Gradient Overlay */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent"></div>
-                                    
-                                    {/* Status Badge */}
-                                    <div className="absolute top-3 right-3">
-                                        {getStatusBadge(property.approvalStatus)}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="glass" style={{ borderRadius: '20px', overflow: 'hidden' }}>
+                                <div className="skeleton" style={{ height: '200px', borderRadius: 0 }} />
+                                <div style={{ padding: '20px' }}>
+                                    <div className="skeleton skeleton-title" style={{ width: '70%', marginBottom: '10px' }} />
+                                    <div className="skeleton skeleton-text" style={{ width: '50%', marginBottom: '16px' }} />
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <div className="skeleton" style={{ width: '80px', height: '36px', borderRadius: '10px' }} />
+                                        <div className="skeleton" style={{ width: '80px', height: '36px', borderRadius: '10px' }} />
                                     </div>
-                                    
-                                    {/* Price Tag */}
-                                    <div className="absolute bottom-3 left-3 right-3">
-                                        <div className="flex items-end justify-between">
-                                            <div>
-                                                <p className="text-emerald-400 text-2xl font-bold">
-                                                    ₹{(property.price / 100000).toFixed(1)}L
-                                                </p>
-                                                <p className="text-slate-300 text-xs mt-1">
-                                                    {property.propertyType} • {property.listingType}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Content */}
-                                <div className="p-5">
-                                    {/* Title */}
-                                    <h3 className="text-white font-semibold text-lg mb-2 line-clamp-1 group-hover:text-blue-400 transition-colors">
-                                        {property.title}
-                                    </h3>
-                                    
-                                    {/* Location */}
-                                    <div className="flex items-center gap-2 text-slate-400 text-sm mb-4">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        <span className="line-clamp-1">{property.location}</span>
-                                    </div>
-
-                                    {/* Property Details */}
-                                    <div className="flex items-center gap-4 mb-4 text-xs text-slate-400">
-                                        {property.bedrooms && (
-                                            <div className="flex items-center gap-1">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                                                </svg>
-                                                <span>{property.bedrooms} BHK</span>
-                                            </div>
-                                        )}
-                                        {property.area && (
-                                            <div className="flex items-center gap-1">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                                                </svg>
-                                                <span>{property.area} {property.areaUnit}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Seller Info */}
-                                    <div className="bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-700">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                                                {property.seller?.name?.[0]?.toUpperCase()}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-white text-sm font-medium truncate">{property.seller?.name}</p>
-                                                <p className="text-slate-400 text-xs truncate">{property.seller?.email}</p>
-                                            </div>
-                                        </div>
-                                        <div className="mt-2 pt-2 border-t border-slate-700">
-                                            <p className="text-slate-400 text-xs">
-                                                Submitted: {new Date(property.submittedForApproval || property.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    {property.approvalStatus === 'pending' && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedProperty(property);
-                                                    setModalType('approve');
-                                                    setShowModal(true);
-                                                }}
-                                                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/50 flex items-center justify-center gap-2"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                Approve
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedProperty(property);
-                                                    setModalType('reject');
-                                                    setShowModal(true);
-                                                }}
-                                                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:shadow-red-500/50 flex items-center justify-center gap-2"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                                Reject
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Reject Button for Approved Properties */}
-                                    {property.approvalStatus === 'approved' && (
-                                        <button
-                                            onClick={() => {
-                                                setSelectedProperty(property);
-                                                setModalType('reject');
-                                                setShowModal(true);
-                                            }}
-                                            className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:shadow-red-500/50 flex items-center justify-center gap-2"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                            Reject Property
-                                        </button>
-                                    )}
-
-                                    {/* Rejection Reason */}
-                                    {property.approvalStatus === 'rejected' && property.rejectionReason && (
-                                        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-                                            <div className="flex items-start gap-2">
-                                                <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <div>
-                                                    <p className="text-red-400 text-xs font-semibold mb-1">Rejection Reason:</p>
-                                                    <p className="text-red-300 text-xs leading-relaxed">{property.rejectionReason}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Approved Badge */}
-                                    {property.approvalStatus === 'approved' && (
-                                        <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-3 flex items-center gap-2">
-                                            <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span className="text-emerald-400 text-sm font-medium">Approved & Live</span>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         ))}
                     </div>
+                ) : properties.length === 0 ? (
+                    <div className="empty-state" style={{ border: '2px dashed rgba(255,255,255,0.07)', borderRadius: '24px' }}>
+                        <div className="empty-state-icon">🏘️</div>
+                        <h3>No properties found</h3>
+                        <p>No properties match the "{filter}" filter.</p>
+                    </div>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                        {properties.map((property, i) => {
+                            const sc = statusConfig[property.approvalStatus] || statusConfig.pending;
+                            return (
+                                <motion.div key={property._id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, type: 'spring', damping: 25 }}
+                                    whileHover={{ y: -4, boxShadow: '0 20px 48px rgba(0,0,0,0.4)' }}
+                                    style={{ borderRadius: '20px', overflow: 'hidden', background: 'rgba(13,21,38,0.9)', border: '1px solid rgba(255,255,255,0.07)', transition: 'all 0.3s' }}>
+
+                                    {/* Image */}
+                                    <div style={{ position: 'relative', height: '200px', overflow: 'hidden' }}>
+                                        <img src={property.images?.[0] || ''} alt={property.title}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
+                                            onError={e => { e.target.style.display = 'none'; }}
+                                            onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
+                                            onMouseLeave={e => e.target.style.transform = 'scale(1)'} />
+                                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(13,21,38,0.95) 0%, rgba(13,21,38,0.3) 50%, transparent 100%)' }} />
+
+                                        {/* Status badge */}
+                                        <div style={{ position: 'absolute', top: '12px', right: '12px', padding: '4px 12px', borderRadius: '8px', background: sc.bg, border: `1px solid ${sc.border}`, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <span style={{ fontSize: '11px' }}>{sc.icon}</span>
+                                            <span style={{ fontSize: '10px', fontWeight: '800', color: sc.color, letterSpacing: '0.8px' }}>{sc.label}</span>
+                                        </div>
+
+                                        {/* Price */}
+                                        <div style={{ position: 'absolute', bottom: '12px', left: '16px' }}>
+                                            <div style={{ fontSize: '22px', fontWeight: '800', color: '#6ee7b7', fontFamily: 'Space Grotesk' }}>
+                                                ₹{property.price >= 10000000 ? `${(property.price / 10000000).toFixed(1)}Cr` : `${(property.price / 100000).toFixed(1)}L`}
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>{property.propertyType} • {property.listingType}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Content */}
+                                    <div style={{ padding: '18px 20px 20px' }}>
+                                        <h3 style={{ fontFamily: 'Space Grotesk', fontWeight: '700', fontSize: '16px', color: 'white', marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{property.title}</h3>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#64748b', fontSize: '12px', marginBottom: '12px' }}>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                            {property.location}
+                                        </div>
+
+                                        {/* Seller */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', marginBottom: '14px' }}>
+                                            <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '800', color: 'white' }}>
+                                                {property.seller?.name?.[0]?.toUpperCase()}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '13px', fontWeight: '600', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{property.seller?.name}</div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                    {new Date(property.submittedForApproval || property.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                </div>
+                                            </div>
+                                            {property.bedrooms && <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>🛏 {property.bedrooms}BHK</span>}
+                                        </div>
+
+                                        {/* ═══ ACTION ROW — SIDE BY SIDE ═══ */}
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            {property.approvalStatus === 'pending' && (
+                                                <>
+                                                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                                                        onClick={() => { setSelectedProperty(property); setModalType('approve'); setShowModal(true); }}
+                                                        style={{ flex: 1, padding: '9px 0', borderRadius: '10px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 13l4 4L19 7" /></svg>
+                                                        Approve
+                                                    </motion.button>
+                                                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                                                        onClick={() => { setSelectedProperty(property); setModalType('reject'); setShowModal(true); }}
+                                                        style={{ flex: 1, padding: '9px 0', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        Reject
+                                                    </motion.button>
+                                                </>
+                                            )}
+
+                                            {property.approvalStatus === 'approved' && (
+                                                <>
+                                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '10px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" strokeWidth="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#6ee7b7' }}>Live</span>
+                                                    </div>
+                                                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                                                        onClick={() => { setSelectedProperty(property); setModalType('reject'); setShowModal(true); }}
+                                                        style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        Reject
+                                                    </motion.button>
+                                                </>
+                                            )}
+
+                                            {property.approvalStatus === 'rejected' && property.rejectionReason && (
+                                                <>
+                                                    <div style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                                                        <div style={{ fontSize: '10px', fontWeight: '700', color: '#fca5a5', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rejection Reason</div>
+                                                        <div style={{ fontSize: '12px', color: 'rgba(252,165,165,0.7)', lineHeight: 1.5 }}>{property.rejectionReason}</div>
+                                                    </div>
+                                                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                                                        onClick={() => { setSelectedProperty(property); setModalType('approve'); setShowModal(true); }}
+                                                        style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 13l4 4L19 7" /></svg>
+                                                        Approve
+                                                    </motion.button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
 
-            {/* Approval/Rejection Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-                    <div 
-                        className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 flex items-center justify-between">
-                            <h3 className="text-2xl font-bold text-white flex items-center gap-3">
-                                {modalType === 'approve' ? (
-                                    <>
-                                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Approve Property
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Reject Property
-                                    </>
-                                )}
-                            </h3>
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="text-white/80 hover:text-white transition-colors"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
+            {/* Approve/Reject Modal */}
+            <AnimatePresence>
+                {showModal && (
+                    <>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)}
+                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', zIndex: 9998 }} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: -20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                            transition={{ type: 'spring', damping: 25 }}
+                            style={{ position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, width: '100%', maxWidth: '600px', maxHeight: 'calc(100vh - 120px)', overflow: 'auto', borderRadius: '24px', background: 'rgba(13,21,38,0.98)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 40px 80px rgba(0,0,0,0.6)' }}
+                            onClick={e => e.stopPropagation()}>
 
-                        {/* Content */}
-                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                            {/* Property Image */}
-                            <div className="relative h-64 rounded-xl overflow-hidden mb-6 group">
-                                <img
-                                    src={selectedProperty.images?.[0]}
-                                    alt={selectedProperty.title}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
-                            </div>
-
-                            {/* Property Info */}
-                            <div className="bg-slate-800/50 rounded-xl p-5 mb-6 border border-slate-700">
-                                <h4 className="text-white font-bold text-xl mb-2">{selectedProperty.title}</h4>
-                                <div className="flex items-center gap-2 text-slate-400 mb-3">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    </svg>
-                                    <span>{selectedProperty.location}</span>
+                            {/* Header */}
+                            <div style={{ padding: '24px 28px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: modalType === 'approve' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+                                        {modalType === 'approve' ? '✓' : '✕'}
+                                    </div>
+                                    <h2 style={{ fontFamily: 'Space Grotesk', fontSize: '20px', fontWeight: '700', color: 'white' }}>
+                                        {modalType === 'approve' ? 'Approve' : 'Reject'} Property
+                                    </h2>
                                 </div>
-                                <p className="text-emerald-400 font-bold text-3xl">₹{(selectedProperty.price / 100000).toFixed(1)}L</p>
+                                <button onClick={() => setShowModal(false)} style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>×</button>
                             </div>
 
-                            {/* Rejection Reason Input */}
-                            {modalType === 'reject' && (
-                                <div className="mb-6">
-                                    <label className="block text-white font-semibold mb-3 flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        Rejection Reason *
-                                    </label>
-                                    <textarea
-                                        value={rejectionReason}
-                                        onChange={(e) => setRejectionReason(e.target.value)}
-                                        className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all resize-none"
-                                        rows="4"
-                                        placeholder="Explain why this property is being rejected..."
-                                    />
+                            {/* Body */}
+                            <div style={{ padding: '24px 28px' }}>
+                                {/* Property preview */}
+                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', marginBottom: '20px' }}>
+                                    <div style={{ width: '80px', height: '60px', borderRadius: '10px', background: selectedProperty?.images?.[0] ? `url(${selectedProperty.images[0]}) center/cover` : 'linear-gradient(135deg, #1e293b, #334155)', flexShrink: 0 }} />
+                                    <div>
+                                        <div style={{ fontSize: '15px', fontWeight: '700', color: 'white', marginBottom: '4px' }}>{selectedProperty?.title}</div>
+                                        <div style={{ fontSize: '18px', fontWeight: '800', color: '#6ee7b7', fontFamily: 'Space Grotesk' }}>₹{(selectedProperty?.price / 100000).toFixed(1)}L</div>
+                                    </div>
                                 </div>
-                            )}
 
-                            {/* Admin Notes */}
-                            <div className="mb-6">
-                                <label className="block text-white font-semibold mb-3 flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Admin Notes (optional)
-                                </label>
-                                <textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
-                                    rows="3"
-                                    placeholder="Add any internal notes..."
-                                />
-                            </div>
-                        </div>
-
-                        {/* Footer Actions */}
-                        <div className="bg-slate-900/50 p-6 flex gap-3 border-t border-slate-700">
-                            <button
-                                onClick={modalType === 'approve' ? handleApprove : handleReject}
-                                className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                                    modalType === 'approve'
-                                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/50 hover:shadow-emerald-500/70'
-                                        : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-500/50 hover:shadow-red-500/70'
-                                }`}
-                            >
-                                {modalType === 'approve' ? (
-                                    <>
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        Approve Property
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                        Reject Property
-                                    </>
+                                {modalType === 'reject' && (
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '8px' }}>Rejection Reason *</label>
+                                        <textarea value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} rows="3" placeholder="Explain why this property is being rejected..." style={inputStyle} />
+                                    </div>
                                 )}
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowModal(false);
-                                    setNotes('');
-                                    setRejectionReason('');
-                                }}
-                                className="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-all duration-200 border border-slate-700"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {toast.show && (
-                <Toast
-                    message={toast.message}
-                    type={toast.type}
-                    onClose={() => setToast({ ...toast, show: false })}
-                />
-            )}
+                                <div style={{ marginBottom: '20px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '8px' }}>Admin Notes (optional)</label>
+                                    <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="2" placeholder="Internal notes..." style={inputStyle} />
+                                </div>
+
+                                {/* Actions — SIDE BY SIDE */}
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                        onClick={modalType === 'approve' ? handleApprove : handleReject}
+                                        style={{
+                                            flex: 1, padding: '14px', borderRadius: '14px', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '700', color: 'white',
+                                            background: modalType === 'approve' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #ef4444, #dc2626)',
+                                            boxShadow: modalType === 'approve' ? '0 8px 24px rgba(16,185,129,0.3)' : '0 8px 24px rgba(239,68,68,0.3)'
+                                        }}>
+                                        {modalType === 'approve' ? '✓ Approve Property' : '✕ Reject Property'}
+                                    </motion.button>
+                                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                        onClick={() => { setShowModal(false); setNotes(''); setRejectionReason(''); }}
+                                        style={{ flex: 1, padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                                        Cancel
+                                    </motion.button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {toast.show && <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />}
         </div>
     );
 }

@@ -1,13 +1,79 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import Toast from '../components/Toast';
+
+// Mini sparkline chart component
+function Sparkline({ data = [], color = '#3b82f6', height = 32 }) {
+    const max = Math.max(...data, 1);
+    const points = data.map((v, i) => {
+        const x = (i / (data.length - 1)) * 100;
+        const y = 100 - (v / max) * 100;
+        return `${x},${y}`;
+    }).join(' ');
+
+    return (
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height, overflow: 'visible' }}>
+            <defs>
+                <linearGradient id={`sparkGrad-${color.replace('#', '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={color} stopOpacity="0" />
+                </linearGradient>
+            </defs>
+            <polyline
+                fill="none"
+                stroke={color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={points}
+                vectorEffect="non-scaling-stroke"
+            />
+            <polygon
+                fill={`url(#sparkGrad-${color.replace('#', '')})`}
+                points={`0,100 ${points} 100,100`}
+            />
+        </svg>
+    );
+}
+
+// Circular health gauge component
+function HealthGauge({ value, label, color, icon }) {
+    const circumference = 2 * Math.PI * 38;
+    const offset = circumference - (value / 100) * circumference;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+            <div style={{ position: 'relative', width: '96px', height: '96px' }}>
+                <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
+                    <motion.circle
+                        cx="48" cy="48" r="38" fill="none"
+                        stroke={color} strokeWidth="6" strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        initial={{ strokeDashoffset: circumference }}
+                        animate={{ strokeDashoffset: offset }}
+                        transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '22px', fontWeight: '800', color: 'white', fontFamily: 'Space Grotesk' }}>{value}%</span>
+                </div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>{label}</div>
+            </div>
+        </div>
+    );
+}
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    const [activeTab, setActiveTab] = useState('users');
 
     useEffect(() => {
         fetchDashboardStats();
@@ -30,228 +96,375 @@ export default function AdminDashboard() {
         navigate('/auth');
     };
 
+    // Generate sparkline data from stats
+    const sparkData = useMemo(() => {
+        const total = stats?.stats?.users?.total || 10;
+        const gen = (base) => Array.from({ length: 7 }, (_, i) => Math.max(1, Math.round(base * (0.6 + Math.sin(i * 0.9) * 0.4 + i * 0.05))));
+        return {
+            users: gen(total / 7),
+            buyers: gen((stats?.stats?.users?.buyers || 5) / 7),
+            sellers: gen((stats?.stats?.users?.sellers || 5) / 7),
+            leads: gen((stats?.stats?.leads || 8) / 7),
+            properties: gen((stats?.stats?.properties?.total || 6) / 7),
+        };
+    }, [stats]);
+
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-slate-400 text-lg">Loading dashboard...</p>
+            <div style={{ background: 'var(--bg-primary)', minHeight: '100vh', paddingTop: '80px' }}>
+                <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 32px' }}>
+                    {/* Skeleton header */}
+                    <div style={{ marginBottom: '48px' }}>
+                        <div className="skeleton skeleton-title" style={{ width: '300px', height: '32px' }} />
+                        <div className="skeleton skeleton-text" style={{ width: '200px' }} />
+                    </div>
+                    {/* Skeleton stat cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '32px' }}>
+                        {[1, 2, 3, 4].map(i => <div key={i} className="skeleton skeleton-card" style={{ height: '160px' }} />)}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        <div className="skeleton skeleton-card" style={{ height: '300px' }} />
+                        <div className="skeleton skeleton-card" style={{ height: '300px' }} />
+                    </div>
                 </div>
             </div>
         );
     }
 
+    const kpis = [
+        { title: 'Total Users', value: stats?.stats?.users?.total || 0, subtitle: `${stats?.stats?.users?.active || 0} active`, icon: '👥', color: '#3b82f6', data: sparkData.users, onClick: () => navigate('/admin/users') },
+        { title: 'Buyers', value: stats?.stats?.users?.buyers || 0, subtitle: 'Registered buyers', icon: '🏡', color: '#10b981', data: sparkData.buyers, onClick: () => navigate('/admin/users?role=buyer') },
+        { title: 'Sellers', value: stats?.stats?.users?.sellers || 0, subtitle: 'Property sellers', icon: '🏢', color: '#8b5cf6', data: sparkData.sellers, onClick: () => navigate('/admin/users?role=seller') },
+        { title: 'Total Leads', value: stats?.stats?.leads || 0, subtitle: 'Platform-wide', icon: '📈', color: '#f59e0b', data: sparkData.leads },
+    ];
+
+    const quickActions = [
+        { icon: '👥', title: 'Manage Users', desc: 'View, activate & control accounts', path: '/admin/users', accent: '#3b82f6' },
+        { icon: '⏳', title: 'Pending Approvals', desc: `${stats?.stats?.properties?.pending || 0} awaiting review`, path: '/admin/properties/pending', accent: '#f59e0b', badge: stats?.stats?.properties?.pending || 0 },
+        { icon: '🏘️', title: 'All Properties', desc: `${stats?.stats?.properties?.total || 0} total listings`, path: '/admin/properties', accent: '#10b981' },
+        { icon: '📊', title: 'Scoring Engine', desc: 'Configure lead algorithms', path: '/admin/scoring', accent: '#8b5cf6' },
+    ];
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pt-20 pb-12">
-            {/* Animated Background */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div style={{ background: 'var(--bg-primary)', minHeight: '100vh', paddingTop: '80px', paddingBottom: '48px' }}>
+            {/* Ambient background */}
+            <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+                <div style={{ position: 'absolute', top: '-10%', left: '15%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)', filter: 'blur(80px)' }} />
+                <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)', filter: 'blur(80px)' }} />
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                {/* Header */}
-                <div className="mb-12 flex items-start justify-between">
-                    <div>
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h1 className="text-4xl font-bold text-white">Admin Dashboard</h1>
-                                <p className="text-slate-400 mt-1">Manage users, properties, and platform analytics</p>
-                            </div>
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 32px', position: 'relative', zIndex: 1 }}>
+
+                {/* ═══════════ HEADER ═══════════ */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '40px' }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(139,92,246,0.3)' }}>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 style={{ fontFamily: 'Space Grotesk', fontSize: '32px', fontWeight: '800', color: 'white', lineHeight: 1.2 }}>
+                                Admin Dashboard
+                            </h1>
+                            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                Platform analytics & management
+                            </p>
                         </div>
                     </div>
-                    <button
-                        onClick={handleSignOut}
-                        className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-red-500/50 hover:shadow-red-500/70 flex items-center gap-2 whitespace-nowrap"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <button onClick={handleSignOut} className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
                         Sign Out
                     </button>
+                </motion.div>
+
+                {/* ═══════════ KPI CARDS WITH SPARKLINES ═══════════ */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+                    {kpis.map((kpi, i) => (
+                        <motion.div
+                            key={kpi.title}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.08 }}
+                            onClick={kpi.onClick}
+                            className="glass"
+                            style={{
+                                padding: '24px', borderRadius: '20px',
+                                cursor: kpi.onClick ? 'pointer' : 'default',
+                                transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
+                                position: 'relative', overflow: 'hidden',
+                            }}
+                            whileHover={kpi.onClick ? { y: -4, scale: 1.02 } : {}}
+                        >
+                            {/* Top accent line */}
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: `linear-gradient(90deg, ${kpi.color}, transparent)` }} />
+
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                                <div style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)' }}>
+                                    {kpi.title}
+                                </div>
+                                <div style={{ fontSize: '24px' }}>{kpi.icon}</div>
+                            </div>
+
+                            <div style={{ fontSize: '36px', fontWeight: '800', color: 'white', fontFamily: 'Space Grotesk', lineHeight: 1, marginBottom: '4px' }}>
+                                {kpi.value}
+                            </div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                                {kpi.subtitle}
+                            </div>
+
+                            {/* Sparkline */}
+                            <Sparkline data={kpi.data} color={kpi.color} height={36} />
+                        </motion.div>
+                    ))}
                 </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                    <StatCard
-                        title="Total Users"
-                        value={stats?.stats.users.total || 0}
-                        subtitle={`${stats?.stats.users.active || 0} active`}
-                        icon="👥"
-                        gradient="from-blue-500 to-cyan-500"
-                        onClick={() => navigate('/admin/users')}
-                    />
-                    <StatCard
-                        title="Buyers"
-                        value={stats?.stats.users.buyers || 0}
-                        subtitle="Registered buyers"
-                        icon="🏡"
-                        gradient="from-emerald-500 to-green-500"
-                        onClick={() => navigate('/admin/users?role=buyer')}
-                    />
-                    <StatCard
-                        title="Sellers"
-                        value={stats?.stats.users.sellers || 0}
-                        subtitle="Registered sellers"
-                        icon="🏢"
-                        gradient="from-purple-500 to-pink-500"
-                        onClick={() => navigate('/admin/users?role=seller')}
-                    />
-                    <StatCard
-                        title="Total Leads"
-                        value={stats?.stats.leads || 0}
-                        subtitle="Platform leads"
-                        icon="📈"
-                        gradient="from-orange-500 to-red-500"
-                    />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <StatCard
-                        title="Total Properties"
-                        value={stats?.stats.properties.total || 0}
-                        subtitle="All listings"
-                        icon="🏘️"
-                        gradient="from-indigo-500 to-blue-500"
-                        onClick={() => navigate('/admin/properties')}
-                    />
-                    <StatCard
-                        title="Pending Approval"
-                        value={stats?.stats.properties.pending || 0}
-                        subtitle="Awaiting review"
-                        icon="⏳"
-                        gradient="from-amber-500 to-orange-500"
-                        onClick={() => navigate('/admin/properties/pending')}
-                        highlight={stats?.stats.properties.pending > 0}
-                    />
-                    <StatCard
-                        title="Approved"
-                        value={stats?.stats.properties.approved || 0}
-                        subtitle="Live properties"
-                        icon="✅"
-                        gradient="from-emerald-500 to-teal-500"
-                    />
-                </div>
-
-                {/* Quick Actions */}
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 border border-slate-700 mb-12">
-                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                        <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        Quick Actions
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button
-                            onClick={() => navigate('/admin/users')}
-                            className="group bg-gradient-to-br from-slate-800 to-slate-900 hover:from-blue-900 hover:to-slate-900 p-6 rounded-xl border border-slate-700 hover:border-blue-500 transition-all duration-300 text-left"
-                        >
-                            <div className="text-4xl mb-3">👥</div>
-                            <div className="text-white font-semibold text-lg mb-1 group-hover:text-blue-400 transition-colors">Manage Users</div>
-                            <div className="text-slate-400 text-sm">View and control user accounts</div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin/properties/pending')}
-                            className="group bg-gradient-to-br from-slate-800 to-slate-900 hover:from-amber-900 hover:to-slate-900 p-6 rounded-xl border border-slate-700 hover:border-amber-500 transition-all duration-300 text-left"
-                        >
-                            <div className="text-4xl mb-3">⏳</div>
-                            <div className="text-white font-semibold text-lg mb-1 group-hover:text-amber-400 transition-colors">Pending Approvals</div>
-                            <div className="text-slate-400 text-sm">Review property submissions</div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin/logs')}
-                            className="group bg-gradient-to-br from-slate-800 to-slate-900 hover:from-purple-900 hover:to-slate-900 p-6 rounded-xl border border-slate-700 hover:border-purple-500 transition-all duration-300 text-left"
-                        >
-                            <div className="text-4xl mb-3">📋</div>
-                            <div className="text-white font-semibold text-lg mb-1 group-hover:text-purple-400 transition-colors">Activity Logs</div>
-                            <div className="text-slate-400 text-sm">View admin actions</div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin/scoring')}
-                            className="group bg-gradient-to-br from-slate-800 to-slate-900 hover:from-indigo-900 hover:to-slate-900 p-6 rounded-xl border border-slate-700 hover:border-indigo-500 transition-all duration-300 text-left"
-                        >
-                            <div className="text-4xl mb-3">📊</div>
-                            <div className="text-white font-semibold text-lg mb-1 group-hover:text-indigo-400 transition-colors">Scoring Mechanisms</div>
-                            <div className="text-slate-400 text-sm">View all algorithms</div>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-slate-700">
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            Recent Users
+                {/* ═══════════ PROPERTY STATS + SYSTEM HEALTH ═══════════ */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+                    {/* Property Stats */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.35 }}
+                        className="glass"
+                        style={{ padding: '28px', borderRadius: '20px' }}
+                    >
+                        <h2 style={{ fontFamily: 'Space Grotesk', fontSize: '18px', fontWeight: '700', color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            🏘️ Property Overview
                         </h2>
-                        <div className="space-y-3">
-                            {stats?.recentUsers?.map(user => (
-                                <div key={user._id} className="bg-slate-800/50 hover:bg-slate-800 p-4 rounded-xl border border-slate-700 hover:border-blue-500/50 transition-all duration-200">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                            {[
+                                { label: 'Total', value: stats?.stats?.properties?.total || 0, color: '#3b82f6' },
+                                { label: 'Pending', value: stats?.stats?.properties?.pending || 0, color: '#f59e0b' },
+                                { label: 'Approved', value: stats?.stats?.properties?.approved || 0, color: '#10b981' },
+                            ].map(p => (
+                                <div key={p.label} style={{ padding: '20px', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '28px', fontWeight: '800', color: p.color, fontFamily: 'Space Grotesk', marginBottom: '4px' }}>
+                                        {p.value}
+                                    </div>
+                                    <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        {p.label}
+                                    </div>
+                                    {/* Progress bar showing ratio */}
+                                    <div className="progress-bar" style={{ marginTop: '10px' }}>
+                                        <div
+                                            className="progress-bar-fill"
+                                            style={{
+                                                width: `${stats?.stats?.properties?.total ? (p.value / stats.stats.properties.total) * 100 : 0}%`,
+                                                background: `linear-gradient(90deg, ${p.color}, ${p.color}88)`,
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+
+                    {/* System Health Gauges */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="glass"
+                        style={{ padding: '28px', borderRadius: '20px' }}
+                    >
+                        <h2 style={{ fontFamily: 'Space Grotesk', fontSize: '18px', fontWeight: '700', color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            📡 System Health
+                        </h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+                            <HealthGauge value={98} label="Uptime" color="#10b981" />
+                            <HealthGauge
+                                value={stats?.stats?.users?.total ? Math.min(100, Math.round((stats.stats.users.active / stats.stats.users.total) * 100)) : 85}
+                                label="Active Users"
+                                color="#3b82f6"
+                            />
+                            <HealthGauge
+                                value={stats?.stats?.properties?.total ? Math.min(100, Math.round((stats.stats.properties.approved / stats.stats.properties.total) * 100)) : 90}
+                                label="Approval Rate"
+                                color="#8b5cf6"
+                            />
+                        </div>
+                    </motion.div>
+                </div>
+
+                {/* ═══════════ QUICK ACTIONS ═══════════ */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45 }}
+                    className="glass"
+                    style={{ padding: '28px', borderRadius: '20px', marginBottom: '32px' }}
+                >
+                    <h2 style={{ fontFamily: 'Space Grotesk', fontSize: '18px', fontWeight: '700', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        ⚡ Quick Actions
+                    </h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                        {quickActions.map((action) => (
+                            <motion.button
+                                key={action.title}
+                                onClick={() => navigate(action.path)}
+                                whileHover={{ y: -4, scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                style={{
+                                    padding: '24px 20px', borderRadius: '16px',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid var(--border)',
+                                    cursor: 'pointer', textAlign: 'left',
+                                    transition: 'all 0.3s',
+                                    position: 'relative', overflow: 'hidden',
+                                }}
+                            >
+                                {/* Hover gradient */}
+                                <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${action.accent}15, transparent)`, opacity: 0, transition: 'opacity 0.3s' }} className="action-hover-bg" />
+
+                                <div style={{ position: 'relative', zIndex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                        <span style={{ fontSize: '28px' }}>{action.icon}</span>
+                                        {action.badge > 0 && (
+                                            <span style={{ padding: '2px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: '800', background: `${action.accent}25`, color: action.accent, border: `1px solid ${action.accent}40` }}>
+                                                {action.badge}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ fontSize: '15px', fontWeight: '700', color: 'white', marginBottom: '4px' }}>{action.title}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{action.desc}</div>
+                                </div>
+                            </motion.button>
+                        ))}
+                    </div>
+                </motion.div>
+
+                {/* ═══════════ ACTIVITY FEED WITH TABS ═══════════ */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="glass"
+                    style={{ padding: '28px', borderRadius: '20px' }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                        <h2 style={{ fontFamily: 'Space Grotesk', fontSize: '18px', fontWeight: '700', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            📋 Recent Activity
+                        </h2>
+                        <div className="tab-bar" style={{ display: 'inline-flex' }}>
+                            <button className={`tab-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+                                Users
+                            </button>
+                            <button className={`tab-item ${activeTab === 'properties' ? 'active' : ''}`} onClick={() => setActiveTab('properties')}>
+                                Properties
+                            </button>
+                        </div>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                        {activeTab === 'users' ? (
+                            <motion.div
+                                key="users"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                            >
+                                {stats?.recentUsers?.length > 0 ? stats.recentUsers.map((user, i) => (
+                                    <motion.div
+                                        key={user._id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.05 }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '14px 16px', borderRadius: '14px',
+                                            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                                            transition: 'all 0.2s', cursor: 'pointer',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{
+                                                width: '42px', height: '42px', borderRadius: '12px',
+                                                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '16px', fontWeight: '800', color: 'white',
+                                            }}>
                                                 {user.name[0].toUpperCase()}
                                             </div>
                                             <div>
-                                                <div className="text-white font-medium">{user.name}</div>
-                                                <div className="text-slate-400 text-sm">{user.email}</div>
+                                                <div style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>{user.name}</div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{user.email}</div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30 mb-1">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <span className="badge" style={{
+                                                color: user.role === 'seller' ? '#8b5cf6' : user.role === 'admin' ? '#f59e0b' : '#10b981',
+                                                background: user.role === 'seller' ? 'rgba(139,92,246,0.12)' : user.role === 'admin' ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
+                                                borderColor: user.role === 'seller' ? 'rgba(139,92,246,0.3)' : user.role === 'admin' ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)',
+                                            }}>
                                                 {user.role}
-                                            </div>
-                                            <div className="text-slate-500 text-xs">
+                                            </span>
+                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                                                 {new Date(user.createdAt).toLocaleDateString()}
-                                            </div>
+                                            </span>
                                         </div>
+                                    </motion.div>
+                                )) : (
+                                    <div className="empty-state" style={{ padding: '40px' }}>
+                                        <div className="empty-state-icon">👥</div>
+                                        <h3>No recent users</h3>
+                                        <p>New user registrations will appear here</p>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-slate-700">
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                            Recent Properties
-                        </h2>
-                        <div className="space-y-3">
-                            {stats?.recentProperties?.map(property => (
-                                <div key={property._id} className="bg-slate-800/50 hover:bg-slate-800 p-4 rounded-xl border border-slate-700 hover:border-emerald-500/50 transition-all duration-200">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <div className="text-white font-medium mb-1">{property.title}</div>
-                                            <div className="text-slate-400 text-sm flex items-center gap-1">
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                </svg>
+                                )}
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="properties"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                            >
+                                {stats?.recentProperties?.length > 0 ? stats.recentProperties.map((property, i) => (
+                                    <motion.div
+                                        key={property._id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.05 }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '14px 16px', borderRadius: '14px',
+                                            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                                            transition: 'all 0.2s', cursor: 'pointer',
+                                        }}
+                                    >
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '14px', fontWeight: '600', color: 'white', marginBottom: '2px' }}>{property.title}</div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
                                                 {property.location}
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-emerald-400 font-bold text-lg">
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: '16px', fontWeight: '800', color: '#10b981', fontFamily: 'Space Grotesk' }}>
                                                 ₹{(property.price / 100000).toFixed(1)}L
                                             </div>
-                                            <div className="text-slate-500 text-xs">
-                                                {property.seller?.name}
-                                            </div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{property.seller?.name}</div>
                                         </div>
+                                    </motion.div>
+                                )) : (
+                                    <div className="empty-state" style={{ padding: '40px' }}>
+                                        <div className="empty-state-icon">🏘️</div>
+                                        <h3>No recent properties</h3>
+                                        <p>New property listings will appear here</p>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                                )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
             </div>
 
             {toast.show && (
@@ -261,45 +474,6 @@ export default function AdminDashboard() {
                     onClose={() => setToast({ ...toast, show: false })}
                 />
             )}
-        </div>
-    );
-}
-
-function StatCard({ title, value, subtitle, icon, gradient, onClick, highlight }) {
-    return (
-        <div
-            onClick={onClick}
-            className={`group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border transition-all duration-300 ${
-                onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-2xl' : ''
-            } ${
-                highlight 
-                    ? 'border-amber-500 shadow-lg shadow-amber-500/20' 
-                    : 'border-slate-700 hover:border-slate-600'
-            }`}
-        >
-            {/* Gradient Overlay */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity duration-300`}></div>
-            
-            <div className="relative">
-                <div className="flex items-start justify-between mb-4">
-                    <div className={`text-4xl p-3 rounded-xl bg-gradient-to-br ${gradient} bg-opacity-20`}>
-                        {icon}
-                    </div>
-                    {highlight && (
-                        <div className="animate-pulse">
-                            <svg className="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                            </svg>
-                        </div>
-                    )}
-                </div>
-                
-                <div>
-                    <p className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">{title}</p>
-                    <p className="text-white text-4xl font-bold mb-1">{value}</p>
-                    <p className="text-slate-500 text-sm">{subtitle}</p>
-                </div>
-            </div>
         </div>
     );
 }

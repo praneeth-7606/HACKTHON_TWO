@@ -161,7 +161,7 @@ const Toast = ({ toast }) => (
 
 // ─── SHARED LAYOUT WRAPPER ─────────────────────────────────────────────────────
 const PageShell = ({ user, toast, children }) => (
-    <div style={{ background: 'radial-gradient(ellipse at 15% 20%, rgba(59,130,246,0.1) 0%, transparent 50%), radial-gradient(ellipse at 85% 80%, rgba(139,92,246,0.07) 0%, transparent 50%), #020817', minHeight: '100vh' }}>
+    <div style={{ background: 'radial-gradient(ellipse at 15% 20%, rgba(59,130,246,0.1) 0%, transparent 50%), radial-gradient(ellipse at 85% 80%, rgba(139,92,246,0.07) 0%, transparent 50%), #0a1628', minHeight: '100vh' }}>
         <div style={{
             position: 'fixed', inset: 0, zIndex: 0,
             backgroundImage: 'linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px)',
@@ -180,7 +180,7 @@ const ListProperty = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const editPropertyId = searchParams.get('edit');
-    
+
     const [user, setUser] = useState(null);
     const [mode, setMode] = useState(null);
     const [form, setForm] = useState(EMPTY_FORM);
@@ -204,18 +204,18 @@ const ListProperty = () => {
 
     useEffect(() => {
         api.get('/users/me').then(r => setUser(r.data.data.user)).catch(() => { });
-        
+
         // If edit mode, load property data
         if (editPropertyId) {
             loadPropertyForEdit(editPropertyId);
         }
     }, [editPropertyId]);
-    
+
     const loadPropertyForEdit = async (propertyId) => {
         try {
             const res = await api.get(`/properties/${propertyId}`);
             const property = res.data.data.property;
-            
+
             // Populate form with existing data
             const editForm = {
                 title: property.title || '',
@@ -246,11 +246,11 @@ const ListProperty = () => {
                 features: Array.isArray(property.features) ? property.features.join(', ') : '',
                 vastuInfo: property.vastuInfo || '',
             };
-            
+
             setForm(editForm);
             setIsEditMode(true);
             setMode('review');
-            
+
             // Load Q&A if exists
             if (property.sellerQA && property.sellerQA.length > 0) {
                 setPropertyQA(property.sellerQA);
@@ -261,7 +261,7 @@ const ListProperty = () => {
                 });
                 setQaAnswers(answers);
             }
-            
+
             showToast('success', '✏️ Editing property. Update any fields and save.');
         } catch (err) {
             showToast('error', 'Failed to load property for editing.');
@@ -368,7 +368,7 @@ const ListProperty = () => {
         try {
             const r = await api.post('/properties/parse-text', { text: sttText });
             const { data: parsed } = r.data;
-            applyAIResult(parsed.data, `Gemini (${parsed.source})`, parsed.fieldsPopulated, parsed.total);
+            applyAIResult(parsed.data, `Mistral (${parsed.source})`, parsed.fieldsPopulated, parsed.total);
         } catch {
             showToast('error', 'Parsing failed. You can fill the form manually.');
             setMode('review');
@@ -388,11 +388,11 @@ const ListProperty = () => {
             });
             payload.features = payload.features ? payload.features.split(',').map(f => f.trim()).filter(Boolean) : [];
             payload.location = `${payload.city}${payload.state ? ', ' + payload.state : ''}`;
-            
+
             if (isEditMode && editPropertyId) {
                 // Update existing property
                 await api.patch(`/properties/${editPropertyId}`, payload);
-                
+
                 // Update Q&A answers if any were modified
                 if (propertyQA.length > 0) {
                     for (let i = 0; i < propertyQA.length; i++) {
@@ -406,7 +406,7 @@ const ListProperty = () => {
                         }
                     }
                 }
-                
+
                 setSuccess(true);
                 showToast('success', '✅ Property updated successfully!');
                 setTimeout(() => navigate('/seller'), 2200);
@@ -415,7 +415,7 @@ const ListProperty = () => {
                 const res = await api.post('/properties', payload);
                 setSuccess(true);
                 showToast('success', '🎉 Property listed successfully!');
-                
+
                 // Redirect to Q&A page with property ID
                 const propertyId = res.data.data.property._id;
                 setTimeout(() => navigate(`/property-qa?propertyId=${propertyId}`), 2200);
@@ -436,16 +436,16 @@ const ListProperty = () => {
                 mode: 'pdf', icon: '📄', label: 'PDF / Document', accent: '#3b82f6',
                 grad: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.08))',
                 title: 'Upload & Auto-Fill',
-                desc: 'Drop a brochure or listing scan — Mistral OCR 3 reads it and Gemini AI structures every detail instantly.',
-                badge: 'Mistral OCR 3 + Gemini 2.5',
+                desc: 'Drop a brochure or listing scan — Mistral OCR extracts and structures every detail instantly.',
+                badge: 'Mistral OCR',
                 steps: ['Drag & drop PDF/image', 'AI extracts all data', 'Review & publish'],
             },
             {
                 mode: 'stt', icon: '🎤', label: 'Voice / Text', accent: '#8b5cf6',
                 grad: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(109,40,217,0.08))',
                 title: 'Speak or Describe',
-                desc: 'Say "3BHK in Bandra, ₹1.2Cr, 1400 sqft" or type it. Gemini AI maps your words to the form automatically.',
-                badge: 'Speech-to-Text + Gemini 2.5',
+                desc: 'Say "3BHK in Bandra, ₹1.2Cr, 1400 sqft" or type it. Mistral AI maps your words to the form automatically.',
+                badge: 'Speech-to-Text + Mistral AI',
                 steps: ['Speak or type details', 'Gemini parses intent', 'Review & publish'],
             },
             {
@@ -560,7 +560,7 @@ const ListProperty = () => {
                                 <span style={{ background: 'linear-gradient(135deg, #60a5fa, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Document</span>
                             </h2>
                             <p style={{ color: '#64748b', fontSize: '14px', lineHeight: 1.7 }}>
-                                Drop a brochure, listing sheet, or photo. <strong style={{ color: '#93c5fd' }}>Mistral OCR 3</strong> reads it, then <strong style={{ color: '#c4b5fd' }}>Gemini 2.5 Flash</strong> structures every field automatically.
+                                Drop a brochure, listing sheet, or photo. <strong style={{ color: '#93c5fd' }}>Mistral OCR</strong> extracts and structures every field automatically.
                             </p>
                         </div>
 
@@ -586,8 +586,8 @@ const ListProperty = () => {
                                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>📄</div>
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: '17px', fontWeight: '700', color: '#60a5fa', fontFamily: 'Space Grotesk', marginBottom: '6px' }}>Processing with Mistral OCR 3...</div>
-                                        <div style={{ fontSize: '13px', color: '#475569' }}>Extracting text, then Gemini 2.5 Flash structures the data</div>
+                                        <div style={{ fontSize: '17px', fontWeight: '700', color: '#60a5fa', fontFamily: 'Space Grotesk', marginBottom: '6px' }}>Processing with Mistral OCR...</div>
+                                        <div style={{ fontSize: '13px', color: '#475569' }}>Extracting and structuring property data</div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '6px' }}>
                                         {[0, 1, 2].map(i => (
@@ -659,7 +659,7 @@ const ListProperty = () => {
                                 <span style={{ background: 'linear-gradient(135deg, #a78bfa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Property</span>
                             </h2>
                             <p style={{ color: '#64748b', fontSize: '14px', lineHeight: 1.7 }}>
-                                Speak naturally or type. <strong style={{ color: '#c4b5fd' }}>Gemini 2.5 Flash</strong> extracts all property details automatically from your description.
+                                Speak naturally or type. <strong style={{ color: '#c4b5fd' }}>Mistral AI</strong> extracts all property details automatically from your description.
                             </p>
                         </div>
 
@@ -730,8 +730,8 @@ const ListProperty = () => {
                             disabled={sttLoading || sttText.length < 5}
                             style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', boxShadow: '0 4px 24px rgba(139,92,246,0.4)' }}>
                             {sttLoading
-                                ? <><div className="loader" style={{ width: '18px', height: '18px', borderTopColor: 'white' }} /> Analyzing with Gemini 2.5 Flash...</>
-                                : <>🤖 Parse with Gemini AI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg></>
+                                ? <><div className="loader" style={{ width: '18px', height: '18px', borderTopColor: 'white' }} /> Analyzing with Mistral AI...</>
+                                : <>🤖 Parse with Mistral AI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg></>
                             }
                         </button>
 
@@ -897,7 +897,7 @@ const ListProperty = () => {
                         Green fields were auto-populated by AI. Review them before publishing.
                     </div>
                 )}
-                
+
                 {/* ── Q&A SECTION (Edit Mode Only) ───────────────── */}
                 {isEditMode && propertyQA.length > 0 && (
                     <motion.div

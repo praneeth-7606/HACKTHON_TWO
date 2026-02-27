@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/AuthPage';
 import SellerDashboard from './pages/SellerDashboard';
@@ -22,6 +23,22 @@ import './index.css';
 function App() {
     return (
         <Router>
+            <Toaster
+                position="top-right"
+                toastOptions={{
+                    style: {
+                        background: '#1e293b',
+                        color: '#f1f5f9',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '14px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+                    },
+                    success: { iconTheme: { primary: '#10b981', secondary: '#fff' }, duration: 3000 },
+                    error: { iconTheme: { primary: '#ef4444', secondary: '#fff' }, duration: 4000 },
+                }}
+            />
             <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/auth" element={<AuthPage />} />

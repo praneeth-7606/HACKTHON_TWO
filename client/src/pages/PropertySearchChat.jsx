@@ -8,14 +8,14 @@ import Navbar from '../components/Navbar';
 const PropertyCard = ({ property, index, onClick }) => {
     const [imageIndex, setImageIndex] = useState(0);
     const hasImages = property.images && property.images.length > 0;
-    
+
     const priceAbbr = (n) => {
         if (!n) return '—';
         if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)} Cr`;
         if (n >= 100000) return `₹${(n / 100000).toFixed(1)} L`;
         return `₹${n.toLocaleString()}`;
     };
-    
+
     const GRADIENTS = [
         'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
@@ -23,13 +23,13 @@ const PropertyCard = ({ property, index, onClick }) => {
         'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
         'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
     ];
-    
+
     const STATUS_COLOR = {
         'Sale': '#10b981',
         'Rent': '#3b82f6',
         'Lease': '#f59e0b'
     };
-    
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -64,10 +64,10 @@ const PropertyCard = ({ property, index, onClick }) => {
                         🏡
                     </div>
                 )}
-                
+
                 {/* Gradient overlay */}
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(2,8,23,0.95) 0%, rgba(2,8,23,0.2) 55%, transparent 100%)' }} />
-                
+
                 {/* Listing Type Badge */}
                 <div style={{
                     position: 'absolute',
@@ -84,7 +84,7 @@ const PropertyCard = ({ property, index, onClick }) => {
                 }}>
                     FOR {property.listingType?.toUpperCase() || 'SALE'}
                 </div>
-                
+
                 {/* Price */}
                 <div style={{
                     position: 'absolute',
@@ -98,7 +98,7 @@ const PropertyCard = ({ property, index, onClick }) => {
                 }}>
                     {priceAbbr(property.price)}
                 </div>
-                
+
                 {/* Seller Info */}
                 <div style={{ position: 'absolute', bottom: '14px', left: '14px', display: 'flex', alignItems: 'center', gap: '7px' }}>
                     <div style={{
@@ -121,7 +121,7 @@ const PropertyCard = ({ property, index, onClick }) => {
                     </span>
                 </div>
             </div>
-            
+
             {/* Content Section */}
             <div style={{ padding: '20px 22px 22px' }}>
                 <h3 style={{
@@ -136,7 +136,7 @@ const PropertyCard = ({ property, index, onClick }) => {
                 }}>
                     {property.title}
                 </h3>
-                
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#475569', fontSize: '13px', marginBottom: '14px' }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
@@ -144,7 +144,7 @@ const PropertyCard = ({ property, index, onClick }) => {
                     </svg>
                     {property.location || property.city || '—'}
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
                     {property.bedrooms && (
                         <span style={{
@@ -195,7 +195,7 @@ const PropertyCard = ({ property, index, onClick }) => {
                         ❤️ {property.likes?.length || 0}
                     </span>
                 </div>
-                
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
                     <span style={{ fontSize: '12px', color: '#475569', fontWeight: '600' }}>VIEW DETAILS</span>
                     <div style={{
@@ -228,13 +228,13 @@ const PropertySearchChat = () => {
     const [error, setError] = useState(null);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const messagesEndRef = useRef(null);
-    
+
     useEffect(() => {
         api.get('/users/me')
             .then(res => {
                 const userData = res.data.data.user;
                 setUser(userData);
-                
+
                 // Redirect sellers to their dashboard
                 if (userData.role === 'seller') {
                     navigate('/seller');
@@ -242,22 +242,22 @@ const PropertySearchChat = () => {
             })
             .catch(() => navigate('/auth'));
     }, [navigate]);
-    
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
-    
+
     useEffect(() => {
         scrollToBottom();
     }, [searchResults]);
-    
+
     const handleSearch = async (e) => {
         e.preventDefault();
         if (!input.trim()) return;
-        
+
         setLoading(true);
         setError(null);
-        
+
         try {
             const res = await api.post('/search/properties', { query: input });
             setSearchResults(res.data.data);
@@ -268,17 +268,17 @@ const PropertySearchChat = () => {
             setLoading(false);
         }
     };
-    
+
     const suggestedQueries = [
         "2 BHK in Marathahalli under 70 lakhs",
         "3 bedroom villa in Whitefield for rent",
         "Commercial plot in Bangalore 1 crore",
         "Apartment for sale in Koramangala"
     ];
-    
+
     if (!user) {
         return (
-            <div style={{ background: '#020817', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+            <div style={{ background: '#0a1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                 <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏡</div>
                     <p>Loading...</p>
@@ -286,11 +286,11 @@ const PropertySearchChat = () => {
             </div>
         );
     }
-    
+
     return (
-        <div style={{ background: '#020817', minHeight: '100vh', color: 'white' }}>
+        <div style={{ background: '#0a1628', minHeight: '100vh', color: 'white' }}>
             <Navbar user={user} />
-            
+
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px 24px' }}>
                 {/* Header */}
                 <motion.div
@@ -311,7 +311,7 @@ const PropertySearchChat = () => {
                         <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 12px #10b981', animation: 'pulse 2s ease-in-out infinite' }} />
                         <span style={{ fontSize: '14px', fontWeight: '700', color: '#60a5fa' }}>AI-Powered Property Search</span>
                     </div>
-                    
+
                     <h1 style={{
                         fontSize: 'clamp(32px, 5vw, 56px)',
                         fontWeight: '900',
@@ -323,12 +323,12 @@ const PropertySearchChat = () => {
                             Find Your Dream Property
                         </span>
                     </h1>
-                    
+
                     <p style={{ fontSize: '18px', color: '#94a3b8', maxWidth: '600px', margin: '0 auto' }}>
                         Just describe what you're looking for in natural language, and our AI will find the perfect matches
                     </p>
                 </motion.div>
-                
+
                 {/* Search Box */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -380,7 +380,7 @@ const PropertySearchChat = () => {
                                 {loading ? '🔍 Searching...' : '🔍 Search'}
                             </button>
                         </div>
-                        
+
                         {/* Suggested Queries */}
                         {!searchResults && (
                             <div>
@@ -415,7 +415,7 @@ const PropertySearchChat = () => {
                         )}
                     </form>
                 </motion.div>
-                
+
                 {/* Error Message */}
                 {error && (
                     <motion.div
@@ -435,7 +435,7 @@ const PropertySearchChat = () => {
                         {error}
                     </motion.div>
                 )}
-                
+
                 {/* Search Results */}
                 {searchResults && (
                     <motion.div
@@ -451,7 +451,7 @@ const PropertySearchChat = () => {
                             <p style={{ fontSize: '14px', color: '#64748b' }}>
                                 Showing results for: <span style={{ color: '#60a5fa', fontWeight: '600' }}>"{searchResults.query}"</span>
                             </p>
-                            
+
                             {/* Applied Filters */}
                             {searchResults.filters && (
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '16px', flexWrap: 'wrap' }}>
@@ -491,15 +491,15 @@ const PropertySearchChat = () => {
                                             color: '#fcd34d',
                                             fontWeight: '600'
                                         }}>
-                                            💰 {searchResults.filters.minPrice ? `₹${(searchResults.filters.minPrice/100000).toFixed(0)}L` : ''} 
+                                            💰 {searchResults.filters.minPrice ? `₹${(searchResults.filters.minPrice / 100000).toFixed(0)}L` : ''}
                                             {searchResults.filters.minPrice && searchResults.filters.maxPrice ? ' - ' : ''}
-                                            {searchResults.filters.maxPrice ? `₹${(searchResults.filters.maxPrice/100000).toFixed(0)}L` : ''}
+                                            {searchResults.filters.maxPrice ? `₹${(searchResults.filters.maxPrice / 100000).toFixed(0)}L` : ''}
                                         </span>
                                     )}
                                 </div>
                             )}
                         </div>
-                        
+
                         {/* Property Grid */}
                         {searchResults.properties.length > 0 ? (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
@@ -545,17 +545,17 @@ const PropertySearchChat = () => {
                         )}
                     </motion.div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
             </div>
-            
+
             {/* Property Detail Modal */}
             {selectedProperty && (
                 <div style={{
                     position: 'fixed',
                     inset: 0,
                     zIndex: 10000,
-                    background: '#020817',
+                    background: '#0a1628',
                     overflow: 'auto'
                 }}>
                     <div style={{
@@ -625,7 +625,7 @@ const PropertySearchChat = () => {
                             🤖 Ask AI About This
                         </button>
                     </div>
-                    
+
                     <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
                         <div style={{
                             background: 'rgba(255,255,255,0.02)',
@@ -641,8 +641,8 @@ const PropertySearchChat = () => {
                                 <div>
                                     <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Price</div>
                                     <div style={{ fontSize: '20px', fontWeight: '800', color: '#60a5fa' }}>
-                                        ₹{selectedProperty.price >= 10000000 ? 
-                                            `${(selectedProperty.price / 10000000).toFixed(1)} Cr` : 
+                                        ₹{selectedProperty.price >= 10000000 ?
+                                            `${(selectedProperty.price / 10000000).toFixed(1)} Cr` :
                                             `${(selectedProperty.price / 100000).toFixed(1)} L`}
                                     </div>
                                 </div>
@@ -664,7 +664,7 @@ const PropertySearchChat = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         {selectedProperty.description && (
                             <div style={{
                                 background: 'rgba(255,255,255,0.02)',
@@ -681,7 +681,7 @@ const PropertySearchChat = () => {
                                 </p>
                             </div>
                         )}
-                        
+
                         <div style={{
                             background: 'rgba(59,130,246,0.05)',
                             borderRadius: '24px',
@@ -709,13 +709,13 @@ const PropertySearchChat = () => {
                                     boxShadow: '0 8px 24px rgba(59,130,246,0.4)'
                                 }}
                             >
-                                Get the complete details 
+                                Get the complete details
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-            
+
             <style>{`
                 @keyframes pulse {
                     0%, 100% { opacity: 1; }
