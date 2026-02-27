@@ -4,12 +4,12 @@
 
 [![Built with Gemini 2.5](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-blueviolet?style=for-the-badge)](https://deepmind.google/technologies/gemini/)
 [![Tech Stack](https://img.shields.io/badge/Stack-MERN%20%2B%20LangChain-blue?style=for-the-badge)](https://www.mongodb.com/)
-[![Demo Video](https://drive.google.com/drive/folders/10PdIuVRCZnp_i5SigqCjOjuHH7tpsxEP?usp=sharing)]()
+[![Demo Video](https://img.shields.io/badge/Demo-Watch%20Now-red?style=for-the-badge)]()
 
 ---
 
 ## 📹 Demo Video
-**[Watch the full demo here](#)** *(Add your Loom/YouTube link)*
+**[Watch the full demo here](#)** *(https://drive.google.com/drive/folders/10PdIuVRCZnp_i5SigqCjOjuHH7tpsxEP?usp=sharing)*
 
 ---
 
