@@ -2,9 +2,11 @@
 
 > **VoidHack 2026 Submission - Problem Statement 1: The Sales Communication Problem**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-estatepulse--ai--alpha.vercel.app-brightgreen?style=for-the-badge)](https://estatepulse-ai-alpha.vercel.app/)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/praneeth-7606/HACKTHON_TWO)
 [![Built with Gemini 2.5](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-blueviolet?style=for-the-badge)](https://deepmind.google/technologies/gemini/)
 [![Tech Stack](https://img.shields.io/badge/Stack-MERN%20%2B%20LangChain-blue?style=for-the-badge)](https://www.mongodb.com/)
-[![Demo Video](https://img.shields.io/badge/Demo-Watch%20Now-red?style=for-the-badge)]()
+[![Demo Video](https://img.shields.io/badge/Demo-Watch%20Now-red?style=for-the-badge)](https://drive.google.com/drive/folders/10PdIuVRCZnp_i5SigqCjOjuHH7tpsxEP?usp=sharing)
 
 ---
 
